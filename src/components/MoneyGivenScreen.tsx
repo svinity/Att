@@ -1,6 +1,6 @@
 import { useState, FormEvent } from 'react';
 import { Worker, Transaction, TransactionType, Expense } from '../types';
-import { Plus, X, Calendar, MessageSquare, ArrowDownRight, User, CheckCircle2, AlertCircle, HelpCircle } from 'lucide-react';
+import { Plus, X, Calendar, MessageSquare, ArrowDownRight, User, CheckCircle2, AlertCircle, HelpCircle, Edit2, Trash2 } from 'lucide-react';
 import EmptyState from './EmptyState';
 
 interface MoneyGivenScreenProps {
@@ -8,6 +8,8 @@ interface MoneyGivenScreenProps {
   transactions: Transaction[];
   expenses: Expense[];
   onAddTransaction: (transaction: Omit<Transaction, 'id'>) => void;
+  onEditTransaction: (id: string, updatedFields: Partial<Transaction>) => void;
+  onDeleteTransaction: (id: string) => void;
 }
 
 export default function MoneyGivenScreen({
@@ -15,17 +17,29 @@ export default function MoneyGivenScreen({
   transactions,
   expenses,
   onAddTransaction,
+  onEditTransaction,
+  onDeleteTransaction,
 }: MoneyGivenScreenProps) {
   const [selectedWorkerId, setSelectedWorkerId] = useState<string>('All');
   const [filterDate, setFilterDate] = useState<string>('');
   
-  // Modal states
+  // Add Modal states
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [formWorkerId, setFormWorkerId] = useState('');
   const [formDate, setFormDate] = useState('');
   const [formAmount, setFormAmount] = useState('');
   const [formType, setFormType] = useState<TransactionType>('Salary Advance');
   const [formRemarks, setFormRemarks] = useState('');
+
+  // Edit Modal states
+  const [editingTx, setEditingTx] = useState<Transaction | null>(null);
+  const [editAmount, setEditAmount] = useState('');
+  const [editType, setEditType] = useState<TransactionType>('Salary Advance');
+  const [editDate, setEditDate] = useState('');
+  const [editRemarks, setEditRemarks] = useState('');
+
+  // Delete Confirmation states
+  const [deletingTxId, setDeletingTxId] = useState<string | null>(null);
 
   // Handle open add modal
   const handleOpenAdd = () => {
@@ -62,6 +76,42 @@ export default function MoneyGivenScreen({
     });
 
     setIsModalOpen(false);
+  };
+
+  // Open Edit Modal
+  const handleOpenEdit = (tx: Transaction) => {
+    setEditingTx(tx);
+    setEditAmount(String(tx.amount));
+    setEditType(tx.type);
+    setEditDate(tx.date);
+    setEditRemarks(tx.remarks || '');
+  };
+
+  // Submit Edit
+  const handleEditSubmit = (e: FormEvent) => {
+    e.preventDefault();
+    if (!editingTx) return;
+    if (!editAmount || Number(editAmount) <= 0) {
+      alert('Please enter a valid amount.');
+      return;
+    }
+
+    onEditTransaction(editingTx.id, {
+      amount: Number(editAmount),
+      type: editType,
+      date: editDate,
+      remarks: editRemarks.trim(),
+    });
+
+    setEditingTx(null);
+  };
+
+  // Confirm Delete
+  const handleConfirmDelete = () => {
+    if (deletingTxId) {
+      onDeleteTransaction(deletingTxId);
+      setDeletingTxId(null);
+    }
   };
 
   // Filter transactions
@@ -177,7 +227,7 @@ export default function MoneyGivenScreen({
           {filteredTransactions.map(tx => (
             <div
               key={tx.id}
-              className="p-4 bg-white rounded-xl border border-gray-100 shadow-xs flex flex-col gap-2.5 hover:border-gray-200 transition-all active:scale-99 cursor-pointer"
+              className="p-4 bg-white rounded-xl border border-gray-100 shadow-xs flex flex-col gap-2.5 hover:border-gray-200 transition-all cursor-default"
             >
               <div className="flex justify-between items-start">
                 <div className="space-y-1">
@@ -212,11 +262,31 @@ export default function MoneyGivenScreen({
                   </div>
                 </div>
 
-                <div className="text-right">
-                  <span className="text-base font-extrabold text-[#dc2626] flex items-center justify-end gap-1">
+                <div className="flex flex-col items-end gap-1">
+                  <span className="text-base font-extrabold text-[#dc2626] flex items-center justify-end gap-1 leading-none">
                     <ArrowDownRight className="w-4 h-4" />
                     <span>Rs. {tx.amount}</span>
                   </span>
+                  
+                  {/* Edit / Delete Row */}
+                  <div className="flex items-center gap-1.5 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => handleOpenEdit(tx)}
+                      className="p-1.5 text-gray-400 hover:text-[#1a56db] hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
+                      title="Edit Transaction"
+                    >
+                      <Edit2 className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDeletingTxId(tx.id)}
+                      className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                      title="Delete Transaction"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -241,7 +311,7 @@ export default function MoneyGivenScreen({
 
       {/* Add Transaction Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center p-0 sm:p-4 z-50">
+        <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center p-0 sm:p-4 z-50 animate-fadeIn">
           <div className="bg-white w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl max-h-[90vh] overflow-y-auto shadow-xl flex flex-col">
             {/* Header */}
             <div className="p-4 border-b border-gray-100 flex items-center justify-between bg-white sticky top-0 z-10">
@@ -369,6 +439,161 @@ export default function MoneyGivenScreen({
                 Log Payment
               </button>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Transaction Modal */}
+      {editingTx && (
+        <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center p-0 sm:p-4 z-50 animate-fadeIn">
+          <div className="bg-white w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl max-h-[90vh] overflow-y-auto shadow-xl flex flex-col">
+            {/* Header */}
+            <div className="p-4 border-b border-gray-100 flex items-center justify-between bg-white sticky top-0 z-10">
+              <h3 className="text-base font-extrabold text-gray-900">Edit Payment Info</h3>
+              <button
+                onClick={() => setEditingTx(null)}
+                className="p-2 text-gray-400 hover:text-gray-900 rounded-lg bg-gray-50 hover:bg-gray-100 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Form */}
+            <form onSubmit={handleEditSubmit} className="p-4 space-y-4 flex-1">
+              {/* Worker Name Display */}
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Worker</label>
+                <div className="w-full h-12 px-3 rounded-lg border border-gray-200 bg-gray-50 flex items-center text-sm font-semibold text-gray-700">
+                  {getWorkerName(editingTx.workerId)}
+                </div>
+              </div>
+
+              {/* Amount Input */}
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Amount Given</label>
+                <div className="relative">
+                  <input
+                    type="number"
+                    required
+                    min={1}
+                    placeholder="Enter amount given"
+                    value={editAmount}
+                    onChange={(e) => setEditAmount(e.target.value)}
+                    className="w-full h-14 pl-12 pr-4 bg-gray-50/50 rounded-lg border border-gray-200 text-lg font-black focus:outline-none focus:bg-white focus:border-[#1a56db] text-[#dc2626]"
+                  />
+                  <span className="absolute left-4 top-4.5 text-sm font-black text-gray-400">Rs.</span>
+                </div>
+              </div>
+
+              {/* Transaction Type - 3 Big Toggle Buttons */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Payment Type</label>
+                <div className="grid grid-cols-3 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setEditType('Salary Advance')}
+                    className={`h-12 rounded-lg font-bold text-[10px] border flex items-center justify-center text-center transition-all cursor-pointer ${
+                      editType === 'Salary Advance'
+                        ? 'bg-[#1a56db] border-[#1a56db] text-white shadow-xs'
+                        : 'bg-white border-gray-200 text-[#1a56db] hover:bg-blue-50/30'
+                    }`}
+                  >
+                    Salary Advance
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setEditType('Site Expense')}
+                    className={`h-12 rounded-lg font-bold text-[10px] border flex items-center justify-center text-center transition-all cursor-pointer ${
+                      editType === 'Site Expense'
+                        ? 'bg-amber-500 border-amber-500 text-white shadow-xs'
+                        : 'bg-white border-gray-200 text-amber-600 hover:bg-amber-50/30'
+                    }`}
+                  >
+                    Site Expense
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setEditType('Other')}
+                    className={`h-12 rounded-lg font-bold text-[10px] border flex items-center justify-center text-center transition-all cursor-pointer ${
+                      editType === 'Other'
+                        ? 'bg-gray-600 border-gray-600 text-white shadow-xs'
+                        : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
+                    }`}
+                  >
+                    Other
+                  </button>
+                </div>
+              </div>
+
+              {/* Date selection */}
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Transaction Date</label>
+                <div className="relative">
+                  <input
+                    type="date"
+                    required
+                    value={editDate}
+                    onChange={(e) => setEditDate(e.target.value)}
+                    className="w-full h-12 pl-10 pr-4 rounded-lg border border-gray-200 text-sm font-medium focus:outline-none focus:border-[#1a56db]"
+                  />
+                  <Calendar className="absolute left-3.5 top-3.5 w-5 h-5 text-gray-400 pointer-events-none" />
+                </div>
+              </div>
+
+              {/* Remarks */}
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Remarks / Purpose</label>
+                <textarea
+                  placeholder="e.g. Cement purchase, monthly advance, etc."
+                  value={editRemarks}
+                  onChange={(e) => setEditRemarks(e.target.value)}
+                  className="w-full p-3 rounded-lg border border-gray-200 text-sm font-medium focus:outline-none focus:border-[#1a56db] h-20 resize-none"
+                />
+              </div>
+
+              {/* Submit button */}
+              <button
+                type="submit"
+                className="w-full h-12 bg-[#1a56db] hover:bg-[#1a56db]/90 text-white font-bold text-sm rounded-lg shadow-sm transition-all active:scale-98 cursor-pointer flex items-center justify-center"
+              >
+                Apply Changes
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deletingTxId && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 animate-fadeIn">
+          <div className="bg-white rounded-2xl w-full max-w-sm p-6 space-y-4 shadow-2xl text-center">
+            <div className="w-12 h-12 bg-red-50 text-red-600 rounded-full flex items-center justify-center mx-auto">
+              <AlertCircle className="w-6 h-6" />
+            </div>
+            <div className="space-y-1">
+              <h3 className="font-extrabold text-sm text-gray-900">Delete Payment Record?</h3>
+              <p className="text-xs text-gray-500 leading-relaxed">
+                Are you sure you want to delete this payment record? This action is permanent and will modify the employee ledger history.
+              </p>
+            </div>
+            <div className="flex gap-2 pt-2">
+              <button
+                type="button"
+                onClick={handleConfirmDelete}
+                className="flex-1 h-11 bg-red-600 hover:bg-red-700 text-white font-bold text-xs rounded-xl uppercase tracking-wider cursor-pointer"
+              >
+                Delete Record
+              </button>
+              <button
+                type="button"
+                onClick={() => setDeletingTxId(null)}
+                className="px-4 h-11 bg-gray-100 text-gray-600 font-bold text-xs rounded-xl cursor-pointer"
+              >
+                Cancel
+              </button>
+            </div>
           </div>
         </div>
       )}

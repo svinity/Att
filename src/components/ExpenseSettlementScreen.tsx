@@ -1,6 +1,6 @@
-import { useState, FormEvent } from 'react';
+import { useState, FormEvent, MouseEvent } from 'react';
 import { Worker, Transaction, Expense } from '../types';
-import { ChevronDown, ChevronUp, Plus, X, Calendar, Wallet, CheckCircle2, FileText, Landmark } from 'lucide-react';
+import { ChevronDown, ChevronUp, Plus, X, Calendar, Wallet, CheckCircle2, Landmark, Edit2, Trash2, AlertCircle } from 'lucide-react';
 import EmptyState from './EmptyState';
 
 interface ExpenseSettlementScreenProps {
@@ -8,6 +8,10 @@ interface ExpenseSettlementScreenProps {
   transactions: Transaction[];
   expenses: Expense[];
   onAddExpense: (expense: Omit<Expense, 'id'>) => void;
+  onEditExpense: (id: string, updatedFields: Partial<Expense>) => void;
+  onDeleteExpense: (id: string) => void;
+  onEditTransaction: (id: string, updatedFields: Partial<Transaction>) => void;
+  onDeleteTransaction: (id: string) => void;
   selectedWorkerId: string;
   setSelectedWorkerId: (workerId: string) => void;
 }
@@ -17,6 +21,10 @@ export default function ExpenseSettlementScreen({
   transactions,
   expenses,
   onAddExpense,
+  onEditExpense,
+  onDeleteExpense,
+  onEditTransaction,
+  onDeleteTransaction,
   selectedWorkerId,
   setSelectedWorkerId,
 }: ExpenseSettlementScreenProps) {
@@ -24,12 +32,26 @@ export default function ExpenseSettlementScreen({
   const [expandedTxId, setExpandedTxId] = useState<string | null>(null);
   const [filterDate, setFilterDate] = useState<string>('');
   
-  // Modal state
+  // Add Expense Modal states
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [targetTxId, setTargetTxId] = useState<string>('');
   const [formExpenseName, setFormExpenseName] = useState('');
   const [formAmount, setFormAmount] = useState('');
   const [formDate, setFormDate] = useState('');
+
+  // Editing cash transaction (Site Expense main card)
+  const [editingTx, setEditingTx] = useState<Transaction | null>(null);
+  const [editTxAmount, setEditTxAmount] = useState('');
+  const [editTxRemarks, setEditTxRemarks] = useState('');
+  const [editTxDate, setEditTxDate] = useState('');
+  const [deletingTxId, setDeletingTxId] = useState<string | null>(null);
+
+  // Editing individual reported expense (bill)
+  const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
+  const [editExpenseName, setEditExpenseName] = useState('');
+  const [editExpenseAmount, setEditExpenseAmount] = useState('');
+  const [editExpenseDate, setEditExpenseDate] = useState('');
+  const [deletingExpenseId, setDeletingExpenseId] = useState<string | null>(null);
 
   // Handle open add expense modal
   const handleOpenAddExpense = (txId: string) => {
@@ -61,6 +83,71 @@ export default function ExpenseSettlementScreen({
     });
 
     setIsModalOpen(false);
+  };
+
+  // Cash transaction edit/delete handlers
+  const handleOpenEditTx = (tx: Transaction, e: MouseEvent) => {
+    e.stopPropagation(); // Avoid triggering accordion toggle
+    setEditingTx(tx);
+    setEditTxAmount(String(tx.amount));
+    setEditTxRemarks(tx.remarks || '');
+    setEditTxDate(tx.date);
+  };
+
+  const handleEditTxSubmit = (e: FormEvent) => {
+    e.preventDefault();
+    if (!editingTx) return;
+    if (!editTxAmount || Number(editTxAmount) <= 0) {
+      alert('Please enter a valid amount.');
+      return;
+    }
+
+    onEditTransaction(editingTx.id, {
+      amount: Number(editTxAmount),
+      remarks: editTxRemarks.trim(),
+      date: editTxDate,
+    });
+
+    setEditingTx(null);
+  };
+
+  const handleConfirmDeleteTx = () => {
+    if (deletingTxId) {
+      onDeleteTransaction(deletingTxId);
+      setDeletingTxId(null);
+    }
+  };
+
+  // Reported expense edit/delete handlers
+  const handleOpenEditExpense = (exp: Expense) => {
+    setEditingExpense(exp);
+    setEditExpenseName(exp.name);
+    setEditExpenseAmount(String(exp.amount));
+    setEditExpenseDate(exp.date);
+  };
+
+  const handleEditExpenseSubmit = (e: FormEvent) => {
+    e.preventDefault();
+    if (!editingExpense) return;
+    if (!editExpenseName.trim() || !editExpenseAmount || Number(editExpenseAmount) <= 0) {
+      alert('Please enter a valid expense name and amount.');
+      return;
+    }
+
+    onEditExpense(editingExpense.id, {
+      name: editExpenseName.trim(),
+      amount: Number(editExpenseAmount),
+      date: editExpenseDate,
+    });
+
+    setEditingExpense(null);
+  };
+
+  const handleConfirmDeleteExpense = () => {
+    if (deletingExpenseId) {
+      onDeleteExpense(deletingExpenseId);
+      setDeletingExpenseId(null);
+    }
   };
 
   // Switch expanded state
@@ -266,9 +353,9 @@ export default function ExpenseSettlementScreen({
                       )}
 
                       {isExpanded ? (
-                        <ChevronUp className="w-5 h-5 text-gray-400" />
+                        <ChevronUp className="w-5 h-5 text-gray-400 hover:text-gray-600" />
                       ) : (
-                        <ChevronDown className="w-5 h-5 text-gray-400" />
+                        <ChevronDown className="w-5 h-5 text-gray-400 hover:text-gray-600" />
                       )}
                     </div>
                   </div>
@@ -296,14 +383,34 @@ export default function ExpenseSettlementScreen({
                                     {formatDateString(exp.date)}
                                   </span>
                                 </div>
-                                <span className="font-extrabold text-gray-900">Rs. {exp.amount}</span>
+                                <div className="flex items-center gap-2.5">
+                                  <span className="font-extrabold text-gray-900">Rs. {exp.amount}</span>
+                                  <div className="flex items-center gap-1 border-l border-gray-200 pl-2">
+                                    <button
+                                      type="button"
+                                      onClick={() => handleOpenEditExpense(exp)}
+                                      className="p-1 text-gray-400 hover:text-[#1a56db] hover:bg-blue-50 rounded-md transition-colors cursor-pointer"
+                                      title="Edit expense bill"
+                                    >
+                                      <Edit2 className="w-3.5 h-3.5" />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => setDeletingExpenseId(exp.id)}
+                                      className="p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors cursor-pointer"
+                                      title="Delete expense bill"
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                    </button>
+                                  </div>
+                                </div>
                               </div>
                             ))}
                           </div>
                         )}
                       </div>
 
-                      {/* Remaining section and Add button */}
+                      {/* Remaining section and Add button / Cash edit buttons */}
                       <div className="pt-3 border-t border-gray-50 flex items-center justify-between gap-3 flex-wrap">
                         <div className="space-y-0.5">
                           <span className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider">
@@ -314,15 +421,34 @@ export default function ExpenseSettlementScreen({
                           </span>
                         </div>
 
-                        {!isSettled && (
+                        <div className="flex items-center gap-1.5">
                           <button
-                            onClick={() => handleOpenAddExpense(tx.id)}
-                            className="h-10 px-4 bg-white border border-[#1a56db] text-[#1a56db] hover:bg-blue-50 font-bold text-xs rounded-lg flex items-center justify-center gap-1.5 transition-all active:scale-95 cursor-pointer shadow-xs"
+                            onClick={(e) => handleOpenEditTx(tx, e)}
+                            className="p-2 bg-gray-50 hover:bg-blue-50 text-gray-500 hover:text-[#1a56db] rounded-lg border border-gray-100 transition-colors cursor-pointer"
+                            title="Edit Cash Given Details"
                           >
-                            <Plus className="w-4 h-4" />
-                            <span>Add Expense</span>
+                            <Edit2 className="w-3.5 h-3.5" />
                           </button>
-                        )}
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setDeletingTxId(tx.id);
+                            }}
+                            className="p-2 bg-red-50 hover:bg-red-100 text-gray-500 hover:text-red-600 rounded-lg border border-gray-100 transition-colors cursor-pointer"
+                            title="Delete Cash Given Record"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                          {!isSettled && (
+                            <button
+                              onClick={() => handleOpenAddExpense(tx.id)}
+                              className="h-10 px-3.5 bg-[#1a56db] text-white hover:bg-[#1a56db]/90 font-bold text-xs rounded-lg flex items-center justify-center gap-1.5 transition-all active:scale-95 cursor-pointer shadow-xs"
+                            >
+                              <Plus className="w-4 h-4" />
+                              <span>Add Expense</span>
+                            </button>
+                          )}
+                        </div>
                       </div>
                     </div>
                   )}
@@ -335,7 +461,7 @@ export default function ExpenseSettlementScreen({
 
       {/* Add Expense Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center p-0 sm:p-4 z-50">
+        <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center p-0 sm:p-4 z-50 animate-fadeIn">
           <div className="bg-white w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl max-h-[90vh] overflow-y-auto shadow-xl flex flex-col">
             {/* Header */}
             <div className="p-4 border-b border-gray-100 flex items-center justify-between bg-white sticky top-0 z-10">
@@ -403,6 +529,206 @@ export default function ExpenseSettlementScreen({
                 Log Itemized Expense
               </button>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Cash Given (Site Expense primary card) Modal */}
+      {editingTx && (
+        <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center p-0 sm:p-4 z-50 animate-fadeIn">
+          <div className="bg-white w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl max-h-[90vh] overflow-y-auto shadow-xl flex flex-col">
+            <div className="p-4 border-b border-gray-100 flex items-center justify-between bg-white sticky top-0 z-10">
+              <h3 className="text-base font-extrabold text-gray-900">Edit Site Cash Info</h3>
+              <button
+                onClick={() => setEditingTx(null)}
+                className="p-2 text-gray-400 hover:text-gray-900 rounded-lg bg-gray-50 hover:bg-gray-100 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleEditTxSubmit} className="p-4 space-y-4 flex-1">
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Amount Given</label>
+                <div className="relative">
+                  <input
+                    type="number"
+                    required
+                    min={1}
+                    placeholder="Enter amount given"
+                    value={editTxAmount}
+                    onChange={(e) => setEditTxAmount(e.target.value)}
+                    className="w-full h-12 pl-12 pr-4 rounded-lg border border-gray-200 text-sm font-semibold focus:outline-none focus:border-[#1a56db]"
+                  />
+                  <span className="absolute left-4 top-3.5 text-xs font-bold text-gray-400">Rs.</span>
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Date</label>
+                <div className="relative">
+                  <input
+                    type="date"
+                    required
+                    value={editTxDate}
+                    onChange={(e) => setEditTxDate(e.target.value)}
+                    className="w-full h-12 pl-10 pr-4 rounded-lg border border-gray-200 text-sm font-medium focus:outline-none focus:border-[#1a56db]"
+                  />
+                  <Calendar className="absolute left-3.5 top-3.5 w-5 h-5 text-gray-400 pointer-events-none" />
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Remarks / Purpose</label>
+                <textarea
+                  placeholder="e.g. Cement purchase, monthly advance, etc."
+                  value={editTxRemarks}
+                  onChange={(e) => setEditTxRemarks(e.target.value)}
+                  className="w-full p-3 rounded-lg border border-gray-200 text-sm font-medium focus:outline-none focus:border-[#1a56db] h-20 resize-none"
+                />
+              </div>
+
+              <button
+                type="submit"
+                className="w-full h-12 bg-[#1a56db] hover:bg-[#1a56db]/90 text-white font-bold text-sm rounded-lg shadow-sm transition-all active:scale-98 cursor-pointer flex items-center justify-center"
+              >
+                Apply Changes
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Cash Given Confirmation Modal */}
+      {deletingTxId && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 animate-fadeIn">
+          <div className="bg-white rounded-2xl w-full max-w-sm p-6 space-y-4 shadow-2xl text-center">
+            <div className="w-12 h-12 bg-red-50 text-red-600 rounded-full flex items-center justify-center mx-auto">
+              <AlertCircle className="w-6 h-6" />
+            </div>
+            <div className="space-y-1">
+              <h3 className="font-extrabold text-sm text-gray-900">Delete Site Cash Given?</h3>
+              <p className="text-xs text-gray-500 leading-relaxed">
+                Are you sure you want to delete this cash given record? Doing so will remove it permanently from the ledger.
+              </p>
+            </div>
+            <div className="flex gap-2 pt-2">
+              <button
+                type="button"
+                onClick={handleConfirmDeleteTx}
+                className="flex-1 h-11 bg-red-600 hover:bg-red-700 text-white font-bold text-xs rounded-xl uppercase tracking-wider cursor-pointer"
+              >
+                Delete Record
+              </button>
+              <button
+                type="button"
+                onClick={() => setDeletingTxId(null)}
+                className="px-4 h-11 bg-gray-100 text-gray-600 font-bold text-xs rounded-xl cursor-pointer"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Itemized Expense Modal */}
+      {editingExpense && (
+        <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center p-0 sm:p-4 z-50 animate-fadeIn">
+          <div className="bg-white w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl max-h-[90vh] overflow-y-auto shadow-xl flex flex-col">
+            <div className="p-4 border-b border-gray-100 flex items-center justify-between bg-white sticky top-0 z-10">
+              <h3 className="text-base font-extrabold text-gray-900">Edit Itemized Expense</h3>
+              <button
+                onClick={() => setEditingExpense(null)}
+                className="p-2 text-gray-400 hover:text-gray-900 rounded-lg bg-gray-50 hover:bg-gray-100 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleEditExpenseSubmit} className="p-4 space-y-4 flex-1">
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Expense Item / Bill Name</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Nails, Cement purchase"
+                  value={editExpenseName}
+                  onChange={(e) => setEditExpenseName(e.target.value)}
+                  className="w-full h-12 px-4 rounded-lg border border-gray-200 text-sm font-medium focus:outline-none focus:border-[#1a56db]"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Amount Spent</label>
+                <div className="relative">
+                  <input
+                    type="number"
+                    required
+                    min={1}
+                    placeholder="Enter amount"
+                    value={editExpenseAmount}
+                    onChange={(e) => setEditExpenseAmount(e.target.value)}
+                    className="w-full h-12 pl-12 pr-4 rounded-lg border border-gray-200 text-sm font-semibold focus:outline-none focus:border-[#1a56db]"
+                  />
+                  <span className="absolute left-4 top-3.5 text-xs font-bold text-gray-400">Rs.</span>
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Expense Date</label>
+                <div className="relative">
+                  <input
+                    type="date"
+                    required
+                    value={editExpenseDate}
+                    onChange={(e) => setEditExpenseDate(e.target.value)}
+                    className="w-full h-12 pl-10 pr-4 rounded-lg border border-gray-200 text-sm font-medium focus:outline-none focus:border-[#1a56db]"
+                  />
+                  <Calendar className="absolute left-3.5 top-3.5 w-5 h-5 text-gray-400 pointer-events-none" />
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                className="w-full h-12 bg-[#047857] hover:bg-[#047857]/90 text-white font-bold text-sm rounded-lg shadow-sm transition-all active:scale-98 cursor-pointer flex items-center justify-center"
+              >
+                Apply Changes
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Itemized Expense Confirmation Modal */}
+      {deletingExpenseId && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 animate-fadeIn">
+          <div className="bg-white rounded-2xl w-full max-w-sm p-6 space-y-4 shadow-2xl text-center">
+            <div className="w-12 h-12 bg-red-50 text-red-600 rounded-full flex items-center justify-center mx-auto">
+              <AlertCircle className="w-6 h-6" />
+            </div>
+            <div className="space-y-1">
+              <h3 className="font-extrabold text-sm text-gray-900">Delete Itemized Expense?</h3>
+              <p className="text-xs text-gray-500 leading-relaxed">
+                Are you sure you want to delete this reported site expense bill? This action is permanent.
+              </p>
+            </div>
+            <div className="flex gap-2 pt-2">
+              <button
+                type="button"
+                onClick={handleConfirmDeleteExpense}
+                className="flex-1 h-11 bg-red-600 hover:bg-red-700 text-white font-bold text-xs rounded-xl uppercase tracking-wider cursor-pointer"
+              >
+                Delete Bill
+              </button>
+              <button
+                type="button"
+                onClick={() => setDeletingExpenseId(null)}
+                className="px-4 h-11 bg-gray-100 text-gray-600 font-bold text-xs rounded-xl cursor-pointer"
+              >
+                Cancel
+              </button>
+            </div>
           </div>
         </div>
       )}

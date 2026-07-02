@@ -469,6 +469,8 @@ export default function App() {
                 transactions={transactions}
                 expenses={expenses}
                 onAddTransaction={handleAddTransaction}
+                onEditTransaction={handleEditTransaction}
+                onDeleteTransaction={handleDeleteTransaction}
               />
             ) : (
               <ExpenseSettlementScreen
@@ -476,6 +478,10 @@ export default function App() {
                 transactions={transactions}
                 expenses={expenses}
                 onAddExpense={handleAddExpense}
+                onEditExpense={handleEditExpense}
+                onDeleteExpense={handleDeleteExpense}
+                onEditTransaction={handleEditTransaction}
+                onDeleteTransaction={handleDeleteTransaction}
                 selectedWorkerId={selectedWorkerId}
                 setSelectedWorkerId={setSelectedWorkerId}
               />
