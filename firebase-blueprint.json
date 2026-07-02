@@ -1,0 +1,112 @@
+{
+  "entities": {
+    "Worker": {
+      "title": "Worker",
+      "description": "Information about a worker",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "mobile": { "type": "string" },
+        "designation": { "type": "string" },
+        "joiningDate": { "type": "string" },
+        "monthlySalary": { "type": "number" },
+        "dailyWage": { "type": "number" },
+        "status": { "type": "string" },
+        "remarks": { "type": "string" }
+      },
+      "required": ["id", "name", "mobile", "designation", "joiningDate", "monthlySalary", "dailyWage", "status"]
+    },
+    "Attendance": {
+      "title": "Attendance",
+      "description": "Daily attendance record for a worker",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "workerId": { "type": "string" },
+        "date": { "type": "string" },
+        "status": { "type": "string" }
+      },
+      "required": ["id", "workerId", "date", "status"]
+    },
+    "Transaction": {
+      "title": "Transaction",
+      "description": "A financial transaction for a worker",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "workerId": { "type": "string" },
+        "date": { "type": "string" },
+        "amount": { "type": "number" },
+        "type": { "type": "string" },
+        "remarks": { "type": "string" }
+      },
+      "required": ["id", "workerId", "date", "amount", "type"]
+    },
+    "Expense": {
+      "title": "Expense",
+      "description": "An itemized site expense linked to a transaction",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "transactionId": { "type": "string" },
+        "name": { "type": "string" },
+        "amount": { "type": "number" },
+        "date": { "type": "string" }
+      },
+      "required": ["id", "transactionId", "name", "amount", "date"]
+    },
+    "Contractor": {
+      "title": "Contractor",
+      "description": "Information about a contractor",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "site": { "type": "string" },
+        "amountFinalised": { "type": "number" },
+        "remarks": { "type": "string" }
+      },
+      "required": ["id", "name", "site", "amountFinalised"]
+    },
+    "ContractorPayment": {
+      "title": "ContractorPayment",
+      "description": "A payment voucher for a contractor",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "contractorId": { "type": "string" },
+        "date": { "type": "string" },
+        "amount": { "type": "number" },
+        "remarks": { "type": "string" }
+      },
+      "required": ["id", "contractorId", "date", "amount"]
+    }
+  },
+  "firestore": {
+    "workers/{workerId}": {
+      "schema": "Worker",
+      "description": "Workers collection"
+    },
+    "attendance/{attendanceId}": {
+      "schema": "Attendance",
+      "description": "Worker attendance logs"
+    },
+    "transactions/{transactionId}": {
+      "schema": "Transaction",
+      "description": "Payments and advance transactions"
+    },
+    "expenses/{expenseId}": {
+      "schema": "Expense",
+      "description": "Site expenses"
+    },
+    "contractors/{contractorId}": {
+      "schema": "Contractor",
+      "description": "Registered contractors"
+    },
+    "contractor_payments/{paymentId}": {
+      "schema": "ContractorPayment",
+      "description": "Voucher payments made to contractors"
+    }
+  }
+}

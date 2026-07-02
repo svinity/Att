@@ -1,0 +1,44 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global safety net: default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper for document IDs to prevent injection
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    // 1. Workers Collection
+    match /workers/{workerId} {
+      allow read, write: if isValidId(workerId);
+    }
+
+    // 2. Attendance Collection
+    match /attendance/{attendanceId} {
+      allow read, write: if isValidId(attendanceId);
+    }
+
+    // 3. Transactions Collection
+    match /transactions/{transactionId} {
+      allow read, write: if isValidId(transactionId);
+    }
+
+    // 4. Expenses Collection
+    match /expenses/{expenseId} {
+      allow read, write: if isValidId(expenseId);
+    }
+
+    // 5. Contractors Collection
+    match /contractors/{contractorId} {
+      allow read, write: if isValidId(contractorId);
+    }
+
+    // 6. Contractor Payments Collection
+    match /contractor_payments/{paymentId} {
+      allow read, write: if isValidId(paymentId);
+    }
+  }
+}
