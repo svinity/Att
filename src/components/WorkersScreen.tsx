@@ -116,8 +116,8 @@ export default function WorkersScreen({ workers, onAddWorker, onEditWorker }: Wo
           <Search className="absolute left-4 top-3.5 w-5 h-5 text-gray-400" />
         </div>
 
-        {/* Filter Chip */}
-        <div className="flex items-center">
+        {/* Filter Chip and Add Worker Row */}
+        <div className="flex items-center justify-between gap-2">
           <button
             onClick={() => setActiveOnly(prev => !prev)}
             className={`flex items-center gap-1.5 h-10 px-4 rounded-full text-xs font-bold border transition-all cursor-pointer active:scale-95 ${
@@ -128,6 +128,14 @@ export default function WorkersScreen({ workers, onAddWorker, onEditWorker }: Wo
           >
             {activeOnly ? <UserCheck className="w-4 h-4" /> : <UserX className="w-4 h-4" />}
             <span>Active Workers Only</span>
+          </button>
+
+          <button
+            onClick={handleOpenAdd}
+            className="flex items-center gap-1.5 h-10 px-4 rounded-full text-xs font-bold bg-[#1a56db] hover:bg-[#1a56db]/90 text-white shadow-xs transition-all cursor-pointer active:scale-95"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Add Worker</span>
           </button>
         </div>
       </div>

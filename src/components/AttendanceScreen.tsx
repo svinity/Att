@@ -102,16 +102,42 @@ export default function AttendanceScreen({
             <ChevronLeft className="w-5 h-5" />
           </button>
 
-          <div className="text-center">
+          <div className="text-center relative py-1 px-4 rounded-xl hover:bg-gray-50 transition-colors cursor-pointer group">
             {viewTab === 'Daily' ? (
               <>
-                <h3 className="text-base font-extrabold text-gray-900">{formatDateFull(currentDate)}</h3>
-                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Select Day</p>
+                <input
+                  type="date"
+                  value={currentDate}
+                  onChange={(e) => {
+                    if (e.target.value) onSetCurrentDate(e.target.value);
+                  }}
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                />
+                <h3 className="text-base font-extrabold text-gray-900 flex items-center justify-center gap-1.5 group-hover:text-[#1a56db] transition-colors">
+                  <span>{formatDateFull(currentDate)}</span>
+                  <CalendarRange className="w-4 h-4 text-[#1a56db]" />
+                </h3>
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Tap to pick date</p>
               </>
             ) : (
               <>
-                <h3 className="text-base font-extrabold text-gray-900">{currentMonthName}</h3>
-                <p className="text-[10px] font-bold text-[#1a56db] uppercase tracking-wider">Month Summary View</p>
+                <input
+                  type="month"
+                  value={currentDate.substring(0, 7)}
+                  onChange={(e) => {
+                    if (e.target.value) {
+                      const parts = currentDate.split('-');
+                      const day = parts[2] || '01';
+                      onSetCurrentDate(`${e.target.value}-${day}`);
+                    }
+                  }}
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                />
+                <h3 className="text-base font-extrabold text-gray-900 flex items-center justify-center gap-1.5 group-hover:text-[#1a56db] transition-colors">
+                  <span>{currentMonthName}</span>
+                  <CalendarRange className="w-4 h-4 text-[#1a56db]" />
+                </h3>
+                <p className="text-[10px] font-bold text-[#1a56db] uppercase tracking-wider">Tap to pick month</p>
               </>
             )}
           </div>

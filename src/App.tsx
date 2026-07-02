@@ -41,6 +41,7 @@ import {
   Menu,
   Smartphone,
   Monitor,
+  Calendar,
 } from 'lucide-react';
 
 export default function App() {
@@ -60,8 +61,16 @@ export default function App() {
   const [isLoading, setIsLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('');
   
-  // App default date (Oct 12, 2023 matches the design mockups precisely)
-  const [currentDate, setCurrentDate] = useState('2023-10-12');
+  // Default to today's date in local time (YYYY-MM-DD)
+  const getTodayDateString = () => {
+    const d = new Date();
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  };
+
+  const [currentDate, setCurrentDate] = useState(getTodayDateString());
 
   // Shared state for selected worker across screens
   const [selectedWorkerId, setSelectedWorkerId] = useState<string>('All');
@@ -356,8 +365,17 @@ export default function App() {
               <span className="text-[9px] font-bold text-[#047857] uppercase tracking-widest mt-0.5">Worker Manager</span>
             </div>
           </div>
-          <div className="text-xs font-bold text-gray-400">
-            {formatDateStringFull(currentDate)}
+          <div className="relative flex items-center gap-1.5 px-2.5 py-1.5 bg-gray-50 hover:bg-gray-100 border border-gray-100 rounded-lg text-xs font-bold text-gray-600 transition-all cursor-pointer">
+            <Calendar className="w-3.5 h-3.5 text-[#1a56db]" />
+            <span>{formatDateStringFull(currentDate)}</span>
+            <input
+              type="date"
+              value={currentDate}
+              onChange={(e) => {
+                if (e.target.value) setCurrentDate(e.target.value);
+              }}
+              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+            />
           </div>
         </header>
 

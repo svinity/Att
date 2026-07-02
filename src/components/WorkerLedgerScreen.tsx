@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Worker, Attendance, Transaction, Expense } from '../types';
 import { getWorkerLedgerBalance, getWorkerExpenseBalance } from '../utils/storage';
-import { User, Coins, Receipt, ArrowRight, ArrowDownRight, History, Calendar, HelpCircle } from 'lucide-react';
+import { User, Coins, Receipt, ArrowRight, ArrowDownRight, History, Calendar, HelpCircle, X } from 'lucide-react';
 import EmptyState from './EmptyState';
 
 interface WorkerLedgerScreenProps {
@@ -31,6 +31,8 @@ export default function WorkerLedgerScreen({
   selectedWorkerId,
   setSelectedWorkerId,
 }: WorkerLedgerScreenProps) {
+  const [filterMonth, setFilterMonth] = useState<string>('');
+
   // If no worker is chosen initially, choose the first active worker or first worker in the list
   const activeWorkers = workers.filter(w => w.status === 'Active');
   const chosenWorkerId = selectedWorkerId === 'All' || !selectedWorkerId
@@ -106,8 +108,14 @@ export default function WorkerLedgerScreen({
       });
     });
 
+    // Filter by month if specified
+    let filtered = items;
+    if (filterMonth) {
+      filtered = items.filter(item => item.date.startsWith(filterMonth));
+    }
+
     // Sort items chronologically descending
-    return items.sort((a, b) => b.date.localeCompare(a.date));
+    return filtered.sort((a, b) => b.date.localeCompare(a.date));
   };
 
   const getPayrollBreakdown = () => {
@@ -180,19 +188,43 @@ export default function WorkerLedgerScreen({
     <div className="space-y-5 pb-20 relative animate-fadeIn">
       {/* Header and Worker Selector */}
       <div className="space-y-3">
-        <div className="space-y-1">
-          <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Select Worker</label>
-          <select
-            value={chosenWorkerId}
-            onChange={(e) => setSelectedWorkerId(e.target.value)}
-            className="w-full h-12 px-4 bg-white rounded-xl border border-gray-200 text-sm font-semibold text-gray-800 focus:outline-none focus:border-[#1a56db] focus:ring-1 focus:ring-[#1a56db] shadow-xs cursor-pointer"
-          >
-            {workers.map(w => (
-              <option key={w.id} value={w.id}>
-                {w.name} ({w.designation})
-              </option>
-            ))}
-          </select>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1">
+            <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Select Worker</label>
+            <select
+              value={chosenWorkerId}
+              onChange={(e) => setSelectedWorkerId(e.target.value)}
+              className="w-full h-12 px-3 bg-white rounded-xl border border-gray-200 text-xs font-semibold text-gray-800 focus:outline-none focus:border-[#1a56db] focus:ring-1 focus:ring-[#1a56db] shadow-xs cursor-pointer"
+            >
+              {workers.map(w => (
+                <option key={w.id} value={w.id}>
+                  {w.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Filter by Month</label>
+            <div className="relative">
+              <input
+                type="month"
+                value={filterMonth}
+                onChange={(e) => setFilterMonth(e.target.value)}
+                className="w-full h-12 px-3 bg-white rounded-xl border border-gray-200 text-xs font-semibold text-gray-800 focus:outline-none focus:border-[#1a56db] focus:ring-1 focus:ring-[#1a56db] shadow-xs cursor-pointer"
+              />
+              {filterMonth && (
+                <button
+                  type="button"
+                  onClick={() => setFilterMonth('')}
+                  className="absolute right-2.5 top-3.5 p-0.5 bg-gray-100 hover:bg-gray-200 rounded-full text-gray-500 cursor-pointer"
+                  title="Clear month filter"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              )}
+            </div>
+          </div>
         </div>
 
         {selectedWorker && (

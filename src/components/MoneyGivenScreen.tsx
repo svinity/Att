@@ -17,6 +17,7 @@ export default function MoneyGivenScreen({
   onAddTransaction,
 }: MoneyGivenScreenProps) {
   const [selectedWorkerId, setSelectedWorkerId] = useState<string>('All');
+  const [filterDate, setFilterDate] = useState<string>('');
   
   // Modal states
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -65,7 +66,11 @@ export default function MoneyGivenScreen({
 
   // Filter transactions
   const filteredTransactions = transactions
-    .filter(t => selectedWorkerId === 'All' ? true : t.workerId === selectedWorkerId)
+    .filter(t => {
+      const matchesWorker = selectedWorkerId === 'All' ? true : t.workerId === selectedWorkerId;
+      const matchesDate = !filterDate ? true : t.date === filterDate;
+      return matchesWorker && matchesDate;
+    })
     .sort((a, b) => b.date.localeCompare(a.date)); // Sort latest first
 
   // Helper to format date
@@ -111,24 +116,50 @@ export default function MoneyGivenScreen({
 
   return (
     <div className="space-y-4 pb-20 relative">
-      {/* Worker Selector dropdown at top */}
-      <div className="space-y-1">
-        <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Filter by Worker</label>
-        <div className="relative">
-          <select
-            value={selectedWorkerId}
-            onChange={(e) => setSelectedWorkerId(e.target.value)}
-            className="w-full h-12 px-4 bg-white rounded-xl border border-gray-200 text-sm font-semibold text-gray-800 focus:outline-none focus:border-[#1a56db] focus:ring-1 focus:ring-[#1a56db] shadow-xs appearance-none cursor-pointer"
-          >
-            <option value="All">All Workers</option>
-            {workers.map(w => (
-              <option key={w.id} value={w.id}>
-                {w.name} ({w.designation})
-              </option>
-            ))}
-          </select>
-          <div className="pointer-events-none absolute inset-y-0 right-4 flex items-center text-gray-500">
-            <User className="w-5 h-5 text-gray-400" />
+      {/* Filters Row: Worker & Date */}
+      <div className="grid grid-cols-2 gap-3">
+        {/* Filter by Worker */}
+        <div className="space-y-1">
+          <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Filter by Worker</label>
+          <div className="relative">
+            <select
+              value={selectedWorkerId}
+              onChange={(e) => setSelectedWorkerId(e.target.value)}
+              className="w-full h-12 pl-3 pr-8 bg-white rounded-xl border border-gray-200 text-xs font-semibold text-gray-800 focus:outline-none focus:border-[#1a56db] focus:ring-1 focus:ring-[#1a56db] shadow-xs appearance-none cursor-pointer"
+            >
+              <option value="All">All Workers</option>
+              {workers.map(w => (
+                <option key={w.id} value={w.id}>
+                  {w.name}
+                </option>
+              ))}
+            </select>
+            <div className="pointer-events-none absolute inset-y-0 right-2.5 flex items-center text-gray-500">
+              <User className="w-4 h-4 text-gray-400" />
+            </div>
+          </div>
+        </div>
+
+        {/* Filter by Date */}
+        <div className="space-y-1">
+          <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Filter by Date</label>
+          <div className="relative">
+            <input
+              type="date"
+              value={filterDate}
+              onChange={(e) => setFilterDate(e.target.value)}
+              className="w-full h-12 px-3 bg-white rounded-xl border border-gray-200 text-xs font-semibold text-gray-800 focus:outline-none focus:border-[#1a56db] focus:ring-1 focus:ring-[#1a56db] shadow-xs cursor-pointer"
+            />
+            {filterDate && (
+              <button
+                type="button"
+                onClick={() => setFilterDate('')}
+                className="absolute right-2.5 top-3.5 p-0.5 bg-gray-100 hover:bg-gray-200 rounded-full text-gray-500 cursor-pointer"
+                title="Clear date filter"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            )}
           </div>
         </div>
       </div>
