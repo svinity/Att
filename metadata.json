@@ -1,0 +1,6 @@
+{
+  "name": "Prefabshala Worker Manager",
+  "description": "Mobile-first construction site worker management application for tracking attendance, advances, site expenses, and individual worker ledgers.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
