@@ -1,4 +1,4 @@
-import { Worker, Attendance, Transaction, Expense, Contractor, ContractorPayment } from '../types';
+import { Worker, Attendance, Transaction, Expense, Contractor, ContractorPayment, AppUser } from '../types';
 
 const STORAGE_KEYS = {
   WORKERS: 'prefabshala_workers',
@@ -7,7 +7,18 @@ const STORAGE_KEYS = {
   EXPENSES: 'prefabshala_expenses',
   CONTRACTORS: 'prefabshala_contractors',
   CONTRACTOR_PAYMENTS: 'prefabshala_contractor_payments',
+  USERS: 'prefabshala_users',
 };
+
+// Default admin account, kept so nobody gets locked out on first run
+export const SEED_USERS: AppUser[] = [
+  {
+    id: 'user-1',
+    username: 'Sahil',
+    password: 'Log@in123',
+    name: 'Sahil',
+  },
+];
 
 export const SEED_CONTRACTORS: Contractor[] = [
   {
@@ -238,6 +249,9 @@ export const saveContractors = (contractors: Contractor[]): void => saveToStorag
 
 export const getContractorPayments = (): ContractorPayment[] => loadFromStorage<ContractorPayment>(STORAGE_KEYS.CONTRACTOR_PAYMENTS, SEED_CONTRACTOR_PAYMENTS);
 export const saveContractorPayments = (payments: ContractorPayment[]): void => saveToStorage<ContractorPayment>(STORAGE_KEYS.CONTRACTOR_PAYMENTS, payments);
+
+export const getUsers = (): AppUser[] => loadFromStorage<AppUser>(STORAGE_KEYS.USERS, SEED_USERS);
+export const saveUsers = (users: AppUser[]): void => saveToStorage<AppUser>(STORAGE_KEYS.USERS, users);
 
 // Calculate specific worker site expense balance (Money Given of type 'Site Expense' - linked expenses)
 export const getWorkerExpenseBalance = (workerId: string): number => {
