@@ -20,9 +20,9 @@ export default function AttendanceScreen({
   onUpdateAttendance,
   onMarkAllPresent,
 }: AttendanceScreenProps) {
-  const [viewTab, setViewTab] = useState<'Daily' | 'Monthly'>('Daily');
-
+  const [viewTab, setViewTab] = useState<'Daily' | 'Monthly' | 'Calendar'>('Daily');
   const activeWorkers = workers.filter(w => w.status === 'Active');
+  const [calendarWorkerId, setCalendarWorkerId] = useState<string>(activeWorkers[0]?.id || '');
 
   // Change date by offset in days
   const changeDate = (days: number) => {
@@ -69,11 +69,11 @@ export default function AttendanceScreen({
     <div className="space-y-4">
       {/* Date & Mode selector at top */}
       <div className="space-y-3">
-        {/* Daily vs Monthly Summary tab */}
+        {/* Daily vs Monthly Summary vs Calendar view tab */}
         <div className="flex bg-gray-100 rounded-lg p-1">
           <button
             onClick={() => setViewTab('Daily')}
-            className={`flex-1 py-2 text-xs font-bold rounded-md transition-all ${
+            className={`flex-1 py-2 text-xs font-bold rounded-md transition-all cursor-pointer ${
               viewTab === 'Daily'
                 ? 'bg-white text-[#1a56db] shadow-xs'
                 : 'text-gray-500 hover:text-gray-900'
@@ -83,13 +83,28 @@ export default function AttendanceScreen({
           </button>
           <button
             onClick={() => setViewTab('Monthly')}
-            className={`flex-1 py-2 text-xs font-bold rounded-md transition-all ${
+            className={`flex-1 py-2 text-xs font-bold rounded-md transition-all cursor-pointer ${
               viewTab === 'Monthly'
                 ? 'bg-white text-[#1a56db] shadow-xs'
                 : 'text-gray-500 hover:text-gray-900'
             }`}
           >
             Monthly Summary
+          </button>
+          <button
+            onClick={() => {
+              setViewTab('Calendar');
+              if (!calendarWorkerId && activeWorkers.length > 0) {
+                setCalendarWorkerId(activeWorkers[0].id);
+              }
+            }}
+            className={`flex-1 py-2 text-xs font-bold rounded-md transition-all cursor-pointer ${
+              viewTab === 'Calendar'
+                ? 'bg-white text-[#1a56db] shadow-xs'
+                : 'text-gray-500 hover:text-gray-900'
+            }`}
+          >
+            Calendar View
           </button>
         </div>
 
@@ -252,7 +267,7 @@ export default function AttendanceScreen({
             </div>
           )}
         </div>
-      ) : (
+      ) : viewTab === 'Monthly' ? (
         /* Monthly summary table/cards */
         <div className="space-y-3">
           <div className="p-4 bg-white rounded-xl border border-gray-100 shadow-xs">
@@ -305,6 +320,131 @@ export default function AttendanceScreen({
                   </div>
                 );
               })}
+            </div>
+          )}
+        </div>
+      ) : (
+        /* Calendar View for Specific Workers */
+        <div className="space-y-4">
+          <div className="p-4 bg-white rounded-2xl border border-gray-100 shadow-xs space-y-3.5">
+            <div>
+              <label className="text-[10px] font-black text-[#1a56db] uppercase tracking-widest block mb-1.5">
+                Select Worker for Calendar View
+              </label>
+              <select
+                value={calendarWorkerId}
+                onChange={(e) => setCalendarWorkerId(e.target.value)}
+                className="w-full h-11 px-3 bg-gray-50 hover:bg-gray-100 border border-gray-100 rounded-xl text-xs font-bold text-gray-800 focus:outline-none"
+              >
+                {activeWorkers.map(w => (
+                  <option key={w.id} value={w.id}>{w.name} ({w.designation})</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Color key guide */}
+            <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-wider text-gray-400 bg-gray-50/50 p-2.5 rounded-xl border border-gray-100/50">
+              <span className="flex items-center gap-1.5">
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+                <span className="text-emerald-700 font-extrabold">Present</span>
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
+                <span className="text-amber-700 font-extrabold">Half Day</span>
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="w-2.5 h-2.5 rounded-full bg-rose-500"></span>
+                <span className="text-rose-600 font-extrabold">Absent</span>
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="w-2.5 h-2.5 rounded-full bg-gray-200"></span>
+                <span>Unmarked</span>
+              </span>
+            </div>
+          </div>
+
+          {calendarWorkerId && (
+            <div className="p-4 bg-white rounded-2xl border border-gray-100 shadow-xs space-y-4">
+              <div className="text-center">
+                <h4 className="font-extrabold text-sm text-gray-900 uppercase tracking-wide">
+                  {currentMonthName}
+                </h4>
+                <p className="text-[9px] font-semibold text-gray-400 mt-0.5">
+                  Tap calendar days to cycle or update attendance status.
+                </p>
+              </div>
+
+              {/* Calendar Grid Construction */}
+              {(() => {
+                const parts = currentDate.split('-');
+                const year = parseInt(parts[0]);
+                const month = parseInt(parts[1]) - 1; // 0-indexed
+                const daysInMonth = new Date(year, month + 1, 0).getDate();
+                const firstDayIndex = new Date(year, month, 1).getDay(); // 0 = Sunday
+
+                const weekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+                const daysArray = Array.from({ length: daysInMonth }, (_, i) => i + 1);
+                const paddingArray = Array.from({ length: firstDayIndex }, (_, i) => i);
+
+                return (
+                  <div className="space-y-2">
+                    {/* Weekday labels */}
+                    <div className="grid grid-cols-7 gap-1 text-center text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                      {weekdays.map(day => (
+                        <div key={day} className="py-1">{day}</div>
+                      ))}
+                    </div>
+
+                    {/* Day blocks */}
+                    <div className="grid grid-cols-7 gap-1.5">
+                      {/* Empty pad cells */}
+                      {paddingArray.map(p => (
+                        <div key={`pad-${p}`} className="aspect-square bg-gray-50/30 rounded-lg"></div>
+                      ))}
+
+                      {/* Actual Days */}
+                      {daysArray.map(day => {
+                        const cellDateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                        const record = attendance.find(a => a.workerId === calendarWorkerId && a.date === cellDateStr);
+                        const status = record?.status;
+
+                        let bgClass = 'bg-white border-gray-100 text-gray-700 hover:bg-gray-50';
+                        let dotClass = 'bg-gray-200';
+                        if (status === 'PRESENT') {
+                          bgClass = 'bg-emerald-50 text-emerald-800 border-emerald-200 font-bold';
+                          dotClass = 'bg-emerald-500';
+                        } else if (status === 'HALF_DAY') {
+                          bgClass = 'bg-amber-50 text-amber-800 border-amber-200 font-bold';
+                          dotClass = 'bg-amber-500';
+                        } else if (status === 'ABSENT') {
+                          bgClass = 'bg-rose-50 text-rose-800 border-rose-200 font-bold';
+                          dotClass = 'bg-rose-500';
+                        }
+
+                        return (
+                          <div
+                            key={`day-${day}`}
+                            onClick={() => {
+                              // Elegant double handler to select & cycle attendance
+                              onSetCurrentDate(cellDateStr);
+                              let nextStatus: AttendanceStatus = 'PRESENT';
+                              if (status === 'PRESENT') nextStatus = 'HALF_DAY';
+                              else if (status === 'HALF_DAY') nextStatus = 'ABSENT';
+                              else if (status === 'ABSENT') nextStatus = 'PRESENT'; // Toggle back or cycles
+                              
+                              onUpdateAttendance(calendarWorkerId, nextStatus);
+                            }}
+                            className={`aspect-square border rounded-xl flex flex-col items-center justify-between p-1.5 cursor-pointer transition-all duration-100 active:scale-90 ${bgClass}`}
+                          >
+                            <span className="text-xs font-black">{day}</span>
+                            <span className={`w-2 h-2 rounded-full ${dotClass}`}></span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
           )}
         </div>

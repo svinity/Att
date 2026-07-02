@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Worker, Attendance, Transaction, Expense, AttendanceStatus } from './types';
+import { Worker, Attendance, Transaction, Expense, AttendanceStatus, Contractor, ContractorPayment } from './types';
 import {
   getWorkers,
   saveWorkers,
@@ -9,18 +9,31 @@ import {
   saveTransactions,
   getExpenses,
   saveExpenses,
+  getContractors,
+  saveContractors,
+  getContractorPayments,
+  saveContractorPayments,
   SEED_WORKERS,
   SEED_ATTENDANCE,
   SEED_TRANSACTIONS,
   SEED_EXPENSES,
+  SEED_CONTRACTORS,
+  SEED_CONTRACTOR_PAYMENTS,
 } from './utils/storage';
 import {
   seedFirestoreIfEmpty,
   fetchFromFirestore,
   saveWorkerToFirestore,
+  deleteWorkerFromFirestore,
   saveAttendanceToFirestore,
   saveTransactionToFirestore,
+  deleteTransactionFromFirestore,
   saveExpenseToFirestore,
+  deleteExpenseFromFirestore,
+  saveContractorToFirestore,
+  deleteContractorFromFirestore,
+  saveContractorPaymentToFirestore,
+  deleteContractorPaymentFromFirestore,
 } from './lib/firebase';
 
 import Dashboard from './components/Dashboard';
@@ -30,6 +43,9 @@ import MoneyGivenScreen from './components/MoneyGivenScreen';
 import ExpenseSettlementScreen from './components/ExpenseSettlementScreen';
 import WorkerLedgerScreen from './components/WorkerLedgerScreen';
 import LoadingSpinner from './components/LoadingSpinner';
+import LoginScreen from './components/LoginScreen';
+import ContractorsScreen from './components/ContractorsScreen';
+import SettingsScreen from './components/SettingsScreen';
 
 import {
   Home as HomeIcon,
@@ -38,14 +54,16 @@ import {
   Banknote as MoneyIcon,
   BookOpen as LedgerIcon,
   HardHat,
-  Menu,
-  Smartphone,
-  Monitor,
   Calendar,
+  Settings as SettingsIcon,
+  Briefcase as ContractorsIcon,
 } from 'lucide-react';
 
 export default function App() {
-  // Tabs: 'Home' | 'Workers' | 'Attendance' | 'Money' | 'Ledger'
+  // Authentication status
+  const [isLoggedIn, setIsLoggedIn] = useState(localStorage.getItem('prefab_is_logged_in') === 'true');
+
+  // Tabs: 'Home' | 'Workers' | 'Attendance' | 'Money' | 'Ledger' | 'Contractors' | 'Settings'
   const [activeTab, setActiveTab] = useState<string>('Home');
   
   // Money sub-tab: 'Given' | 'Settlement'
@@ -56,6 +74,8 @@ export default function App() {
   const [attendance, setAttendance] = useState<Attendance[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [contractors, setContractors] = useState<Contractor[]>([]);
+  const [contractorPayments, setContractorPayments] = useState<ContractorPayment[]>([]);
 
   // Simulation states
   const [isLoading, setIsLoading] = useState(false);
@@ -82,16 +102,27 @@ export default function App() {
     const cachedAttendance = getAttendance();
     const cachedTransactions = getTransactions();
     const cachedExpenses = getExpenses();
+    const cachedContractors = getContractors();
+    const cachedContractorPayments = getContractorPayments();
 
     setWorkers(cachedWorkers);
     setAttendance(cachedAttendance);
     setTransactions(cachedTransactions);
     setExpenses(cachedExpenses);
+    setContractors(cachedContractors);
+    setContractorPayments(cachedContractorPayments);
 
     // 2. Sync with Firebase in the background
     const syncWithFirebase = async () => {
       // First, seed Firestore if completely empty
-      await seedFirestoreIfEmpty(SEED_WORKERS, SEED_ATTENDANCE, SEED_TRANSACTIONS, SEED_EXPENSES);
+      await seedFirestoreIfEmpty(
+        SEED_WORKERS, 
+        SEED_ATTENDANCE, 
+        SEED_TRANSACTIONS, 
+        SEED_EXPENSES,
+        SEED_CONTRACTORS,
+        SEED_CONTRACTOR_PAYMENTS
+      );
       
       // Fetch fresh data from Firestore
       const result = await fetchFromFirestore();
@@ -100,12 +131,16 @@ export default function App() {
         setAttendance(result.attendance);
         setTransactions(result.transactions);
         setExpenses(result.expenses);
+        setContractors(result.contractors || []);
+        setContractorPayments(result.contractorPayments || []);
 
         // Also update local storage cache
         saveWorkers(result.workers);
         saveAttendance(result.attendance);
         saveTransactions(result.transactions);
         saveExpenses(result.expenses);
+        saveContractors(result.contractors || []);
+        saveContractorPayments(result.contractorPayments || []);
       }
     };
 
@@ -227,6 +262,28 @@ export default function App() {
     });
   };
 
+  const handleEditTransaction = (txId: string, fields: Partial<Transaction>) => {
+    triggerLoading('Saving transaction adjustment...', () => {
+      const target = transactions.find(t => t.id === txId);
+      if (target) {
+        const updatedTx = { ...target, ...fields };
+        const updated = transactions.map(t => t.id === txId ? updatedTx : t);
+        setTransactions(updated);
+        saveTransactions(updated);
+        saveTransactionToFirestore(updatedTx);
+      }
+    });
+  };
+
+  const handleDeleteTransaction = (txId: string) => {
+    triggerLoading('Deleting transaction...', () => {
+      const updated = transactions.filter(t => t.id !== txId);
+      setTransactions(updated);
+      saveTransactions(updated);
+      deleteTransactionFromFirestore(txId);
+    });
+  };
+
   // EXPENSE ACTIONS
   const handleAddExpense = (newExp: Omit<Expense, 'id'>) => {
     triggerLoading('Saving itemized expense...', () => {
@@ -236,6 +293,99 @@ export default function App() {
       setExpenses(updatedExps);
       saveExpenses(updatedExps);
       saveExpenseToFirestore(createdExp);
+    });
+  };
+
+  const handleEditExpense = (id: string, fields: Partial<Expense>) => {
+    triggerLoading('Updating expense...', () => {
+      const target = expenses.find(e => e.id === id);
+      if (target) {
+        const updatedExp = { ...target, ...fields };
+        const updated = expenses.map(e => e.id === id ? updatedExp : e);
+        setExpenses(updated);
+        saveExpenses(updated);
+        saveExpenseToFirestore(updatedExp);
+      }
+    });
+  };
+
+  const handleDeleteExpense = (id: string) => {
+    triggerLoading('Removing expense...', () => {
+      const updated = expenses.filter(e => e.id !== id);
+      setExpenses(updated);
+      saveExpenses(updated);
+      deleteExpenseFromFirestore(id);
+    });
+  };
+
+  const handleDeleteWorker = (workerId: string) => {
+    triggerLoading('Removing worker...', () => {
+      const updated = workers.filter(w => w.id !== workerId);
+      setWorkers(updated);
+      saveWorkers(updated);
+      deleteWorkerFromFirestore(workerId);
+    });
+  };
+
+  // CONTRACTOR ACTIONS
+  const handleAddContractor = (newContractor: Omit<Contractor, 'id'>) => {
+    triggerLoading('Registering contractor...', () => {
+      const id = `contractor-${Date.now()}`;
+      const created = { ...newContractor, id };
+      const updated = [...contractors, created];
+      setContractors(updated);
+      saveContractors(updated);
+      saveContractorToFirestore(created);
+    });
+  };
+
+  const handleEditContractor = (id: string, fields: Partial<Contractor>) => {
+    triggerLoading('Updating contractor info...', () => {
+      const target = contractors.find(c => c.id === id);
+      if (target) {
+        const updated = { ...target, ...fields };
+        const updatedList = contractors.map(c => c.id === id ? updated : c);
+        setContractors(updatedList);
+        saveContractors(updatedList);
+        saveContractorToFirestore(updated);
+      }
+    });
+  };
+
+  const handleDeleteContractor = (id: string) => {
+    triggerLoading('Removing contractor...', () => {
+      const updated = contractors.filter(c => c.id !== id);
+      setContractors(updated);
+      saveContractors(updated);
+      deleteContractorFromFirestore(id);
+      
+      // Also delete linked payments
+      const remainingPayments = contractorPayments.filter(p => p.contractorId !== id);
+      setContractorPayments(remainingPayments);
+      saveContractorPayments(remainingPayments);
+      
+      const deletedPayments = contractorPayments.filter(p => p.contractorId === id);
+      deletedPayments.forEach(p => deleteContractorPaymentFromFirestore(p.id));
+    });
+  };
+
+  const handleAddContractorPayment = (newPayment: Omit<ContractorPayment, 'id'>) => {
+    triggerLoading('Recording payment voucher...', () => {
+      const id = `cp-${Date.now()}`;
+      const created = { ...newPayment, id };
+      const updated = [...contractorPayments, created];
+      setContractorPayments(updated);
+      saveContractorPayments(updated);
+      saveContractorPaymentToFirestore(created);
+    });
+  };
+
+  const handleDeleteContractorPayment = (id: string) => {
+    triggerLoading('Deleting payment entry...', () => {
+      const updated = contractorPayments.filter(p => p.id !== id);
+      setContractorPayments(updated);
+      saveContractorPayments(updated);
+      deleteContractorPaymentFromFirestore(id);
     });
   };
 
@@ -293,7 +443,7 @@ export default function App() {
             <div className="flex bg-gray-100 rounded-lg p-1">
               <button
                 onClick={() => setMoneySubTab('Given')}
-                className={`flex-1 py-2 text-xs font-bold rounded-md transition-all ${
+                className={`flex-1 py-2 text-xs font-bold rounded-md transition-all cursor-pointer ${
                   moneySubTab === 'Given'
                     ? 'bg-white text-[#1a56db] shadow-xs'
                     : 'text-gray-500 hover:text-gray-900'
@@ -303,7 +453,7 @@ export default function App() {
               </button>
               <button
                 onClick={() => setMoneySubTab('Settlement')}
-                className={`flex-1 py-2 text-xs font-bold rounded-md transition-all ${
+                className={`flex-1 py-2 text-xs font-bold rounded-md transition-all cursor-pointer ${
                   moneySubTab === 'Settlement'
                     ? 'bg-white text-[#1a56db] shadow-xs'
                     : 'text-gray-500 hover:text-gray-900'
@@ -343,10 +493,46 @@ export default function App() {
             setSelectedWorkerId={setSelectedWorkerId}
           />
         );
+      case 'Contractors':
+        return (
+          <ContractorsScreen
+            contractors={contractors}
+            payments={contractorPayments}
+            onAddContractor={handleAddContractor}
+            onEditContractor={handleEditContractor}
+            onDeleteContractor={handleDeleteContractor}
+            onAddPayment={handleAddContractorPayment}
+            onDeletePayment={handleDeleteContractorPayment}
+            currentDate={currentDate}
+          />
+        );
+      case 'Settings':
+        return (
+          <SettingsScreen
+            workers={workers}
+            transactions={transactions}
+            expenses={expenses}
+            onEditWorker={handleEditWorker}
+            onDeleteWorker={handleDeleteWorker}
+            onEditTransaction={handleEditTransaction}
+            onDeleteTransaction={handleDeleteTransaction}
+            onEditExpense={handleEditExpense}
+            onDeleteExpense={handleDeleteExpense}
+            onLogout={() => {
+              localStorage.removeItem('prefab_is_logged_in');
+              setIsLoggedIn(false);
+            }}
+          />
+        );
       default:
         return null;
     }
   };
+
+  // 1. GATEWAY: If not logged in, render the login card layout exclusively
+  if (!isLoggedIn) {
+    return <LoginScreen onLoginSuccess={() => setIsLoggedIn(true)} />;
+  }
 
   return (
     <div className="min-h-screen bg-[#f8fafc] text-gray-800 font-sans flex flex-col items-center">
@@ -356,7 +542,7 @@ export default function App() {
         
         {/* Top bar */}
         <header className="h-14 bg-white border-b border-gray-100 px-4 flex items-center justify-between sticky top-0 z-40">
-          <div className="flex items-center gap-2">
+          <div onClick={() => handleTabChange('Home')} className="flex items-center gap-2 cursor-pointer">
             <div className="w-8 h-8 rounded-lg bg-[#1a56db] flex items-center justify-center text-white">
               <HardHat className="w-5 h-5 stroke-[2]" />
             </div>
@@ -365,17 +551,32 @@ export default function App() {
               <span className="text-[9px] font-bold text-[#047857] uppercase tracking-widest mt-0.5">Worker Manager</span>
             </div>
           </div>
-          <div className="relative flex items-center gap-1.5 px-2.5 py-1.5 bg-gray-50 hover:bg-gray-100 border border-gray-100 rounded-lg text-xs font-bold text-gray-600 transition-all cursor-pointer">
-            <Calendar className="w-3.5 h-3.5 text-[#1a56db]" />
-            <span>{formatDateStringFull(currentDate)}</span>
-            <input
-              type="date"
-              value={currentDate}
-              onChange={(e) => {
-                if (e.target.value) setCurrentDate(e.target.value);
-              }}
-              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-            />
+          
+          <div className="flex items-center gap-2">
+            <div className="relative flex items-center gap-1.5 px-2.5 py-1.5 bg-gray-50 hover:bg-gray-100 border border-gray-100 rounded-lg text-xs font-bold text-gray-600 transition-all cursor-pointer">
+              <Calendar className="w-3.5 h-3.5 text-[#1a56db]" />
+              <span>{formatDateStringFull(currentDate)}</span>
+              <input
+                type="date"
+                value={currentDate}
+                onChange={(e) => {
+                  if (e.target.value) setCurrentDate(e.target.value);
+                }}
+                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+              />
+            </div>
+
+            <button
+              onClick={() => handleTabChange('Settings')}
+              className={`p-2.5 rounded-lg border transition-all cursor-pointer ${
+                activeTab === 'Settings'
+                  ? 'bg-blue-50 border-blue-200 text-[#1a56db]'
+                  : 'bg-gray-50 hover:bg-gray-100 border-gray-100 text-gray-500'
+              }`}
+              title="Open Settings"
+            >
+              <SettingsIcon className="w-4 h-4" />
+            </button>
           </div>
         </header>
 
@@ -391,8 +592,8 @@ export default function App() {
           </div>
         )}
 
-        {/* Bottom Navigation Bar */}
-        <nav className="fixed bottom-0 left-0 right-0 max-w-md mx-auto h-16 bg-white border-t border-gray-100 grid grid-cols-5 items-center px-2 z-40 shadow-lg">
+        {/* Bottom Navigation Bar with 6 columns to perfectly fit Contractors */}
+        <nav className="fixed bottom-0 left-0 right-0 max-w-md mx-auto h-16 bg-white border-t border-gray-100 grid grid-cols-6 items-center px-1.5 z-40 shadow-lg">
           {/* Home */}
           <button
             onClick={() => handleTabChange('Home')}
@@ -401,7 +602,7 @@ export default function App() {
             }`}
           >
             <HomeIcon className="w-5 h-5" />
-            <span className="text-[10px] font-bold">Home</span>
+            <span className="text-[9px] font-bold">Home</span>
           </button>
 
           {/* Workers */}
@@ -412,7 +613,7 @@ export default function App() {
             }`}
           >
             <WorkersIcon className="w-5 h-5" />
-            <span className="text-[10px] font-bold">Workers</span>
+            <span className="text-[9px] font-bold">Workers</span>
           </button>
 
           {/* Attendance */}
@@ -423,7 +624,7 @@ export default function App() {
             }`}
           >
             <AttendanceIcon className="w-5 h-5" />
-            <span className="text-[10px] font-bold">Attendance</span>
+            <span className="text-[9px] font-bold">Attendance</span>
           </button>
 
           {/* Money */}
@@ -434,7 +635,18 @@ export default function App() {
             }`}
           >
             <MoneyIcon className="w-5 h-5" />
-            <span className="text-[10px] font-bold">Money</span>
+            <span className="text-[9px] font-bold">Money</span>
+          </button>
+
+          {/* Contractors */}
+          <button
+            onClick={() => handleTabChange('Contractors')}
+            className={`flex flex-col items-center justify-center gap-1 h-full rounded-xl transition-all cursor-pointer ${
+              activeTab === 'Contractors' ? 'text-[#1a56db]' : 'text-gray-400 hover:text-gray-600'
+            }`}
+          >
+            <ContractorsIcon className="w-5 h-5" />
+            <span className="text-[9px] font-bold">Contractor</span>
           </button>
 
           {/* Ledger */}
@@ -445,7 +657,7 @@ export default function App() {
             }`}
           >
             <LedgerIcon className="w-5 h-5" />
-            <span className="text-[10px] font-bold">Ledger</span>
+            <span className="text-[9px] font-bold">Ledger</span>
           </button>
         </nav>
       </div>

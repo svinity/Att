@@ -37,3 +37,20 @@ export interface Expense {
   amount: number;
   date: string; // YYYY-MM-DD
 }
+
+export interface Contractor {
+  id: string;
+  name: string;
+  site: string;
+  amountFinalised: number;
+  remarks?: string;
+}
+
+export interface ContractorPayment {
+  id: string;
+  contractorId: string;
+  date: string; // YYYY-MM-DD
+  amount: number;
+  remarks: string;
+}
+

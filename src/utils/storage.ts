@@ -1,11 +1,54 @@
-import { Worker, Attendance, Transaction, Expense } from '../types';
+import { Worker, Attendance, Transaction, Expense, Contractor, ContractorPayment } from '../types';
 
 const STORAGE_KEYS = {
   WORKERS: 'prefabshala_workers',
   ATTENDANCE: 'prefabshala_attendance',
   TRANSACTIONS: 'prefabshala_transactions',
   EXPENSES: 'prefabshala_expenses',
+  CONTRACTORS: 'prefabshala_contractors',
+  CONTRACTOR_PAYMENTS: 'prefabshala_contractor_payments',
 };
+
+export const SEED_CONTRACTORS: Contractor[] = [
+  {
+    id: 'contractor-1',
+    name: 'Sharma Builders',
+    site: 'Sector 62 Prefab Office',
+    amountFinalised: 450000,
+    remarks: 'Plumbing & Civil work package'
+  },
+  {
+    id: 'contractor-2',
+    name: 'Verma Electricals',
+    site: 'Noida Hub Assembly',
+    amountFinalised: 280000,
+    remarks: 'Complete wiring and light fittings'
+  }
+];
+
+export const SEED_CONTRACTOR_PAYMENTS: ContractorPayment[] = [
+  {
+    id: 'cp-1',
+    contractorId: 'contractor-1',
+    date: '2023-10-01',
+    amount: 150000,
+    remarks: 'Initial advance'
+  },
+  {
+    id: 'cp-2',
+    contractorId: 'contractor-1',
+    date: '2023-10-10',
+    amount: 100000,
+    remarks: 'Second installment on foundation completion'
+  },
+  {
+    id: 'cp-3',
+    contractorId: 'contractor-2',
+    date: '2023-10-05',
+    amount: 80000,
+    remarks: 'Material purchase advance'
+  }
+];
 
 export const SEED_WORKERS: Worker[] = [
   {
@@ -189,6 +232,12 @@ export const saveTransactions = (transactions: Transaction[]): void => saveToSto
 
 export const getExpenses = (): Expense[] => loadFromStorage<Expense>(STORAGE_KEYS.EXPENSES, SEED_EXPENSES);
 export const saveExpenses = (expenses: Expense[]): void => saveToStorage<Expense>(STORAGE_KEYS.EXPENSES, expenses);
+
+export const getContractors = (): Contractor[] => loadFromStorage<Contractor>(STORAGE_KEYS.CONTRACTORS, SEED_CONTRACTORS);
+export const saveContractors = (contractors: Contractor[]): void => saveToStorage<Contractor>(STORAGE_KEYS.CONTRACTORS, contractors);
+
+export const getContractorPayments = (): ContractorPayment[] => loadFromStorage<ContractorPayment>(STORAGE_KEYS.CONTRACTOR_PAYMENTS, SEED_CONTRACTOR_PAYMENTS);
+export const saveContractorPayments = (payments: ContractorPayment[]): void => saveToStorage<ContractorPayment>(STORAGE_KEYS.CONTRACTOR_PAYMENTS, payments);
 
 // Calculate specific worker site expense balance (Money Given of type 'Site Expense' - linked expenses)
 export const getWorkerExpenseBalance = (workerId: string): number => {
