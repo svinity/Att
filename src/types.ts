@@ -54,3 +54,10 @@ export interface ContractorPayment {
   remarks: string;
 }
 
+export interface AppUser {
+  id: string;
+  username: string;
+  password: string;
+  name: string;
+}
+

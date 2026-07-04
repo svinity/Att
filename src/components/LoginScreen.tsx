@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { HardHat, Lock, User, Eye, EyeOff } from 'lucide-react';
+import { AppUser } from '../types';
 
 interface LoginScreenProps {
+  users: AppUser[];
   onLoginSuccess: () => void;
 }
 
-export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
+export default function LoginScreen({ users, onLoginSuccess }: LoginScreenProps) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -25,7 +27,11 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
 
     // Simulate standard security check with minor delay
     setTimeout(() => {
-      if (username.trim() === 'Sahil' && password === 'Log@in123') {
+      // Fallback admin credentials in case the users list hasn't loaded yet (e.g. first run / offline)
+      const isFallbackAdmin = users.length === 0 && username.trim() === 'Sahil' && password === 'Log@in123';
+      const matchedUser = users.find(u => u.username === username.trim() && u.password === password);
+
+      if (matchedUser || isFallbackAdmin) {
         localStorage.setItem('prefab_is_logged_in', 'true');
         onLoginSuccess();
       } else {

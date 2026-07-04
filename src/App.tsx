@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Worker, Attendance, Transaction, Expense, AttendanceStatus, Contractor, ContractorPayment } from './types';
+import { Worker, Attendance, Transaction, Expense, AttendanceStatus, Contractor, ContractorPayment, AppUser } from './types';
 import {
   getWorkers,
   saveWorkers,
@@ -13,15 +13,19 @@ import {
   saveContractors,
   getContractorPayments,
   saveContractorPayments,
+  getUsers,
+  saveUsers,
   SEED_WORKERS,
   SEED_ATTENDANCE,
   SEED_TRANSACTIONS,
   SEED_EXPENSES,
   SEED_CONTRACTORS,
   SEED_CONTRACTOR_PAYMENTS,
+  SEED_USERS,
 } from './utils/storage';
 import {
   seedFirestoreIfEmpty,
+  seedUsersIfEmpty,
   fetchFromFirestore,
   saveWorkerToFirestore,
   deleteWorkerFromFirestore,
@@ -34,6 +38,8 @@ import {
   deleteContractorFromFirestore,
   saveContractorPaymentToFirestore,
   deleteContractorPaymentFromFirestore,
+  saveUserToFirestore,
+  deleteUserFromFirestore,
 } from './lib/firebase';
 
 import Dashboard from './components/Dashboard';
@@ -76,6 +82,7 @@ export default function App() {
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [contractors, setContractors] = useState<Contractor[]>([]);
   const [contractorPayments, setContractorPayments] = useState<ContractorPayment[]>([]);
+  const [users, setUsers] = useState<AppUser[]>([]);
 
   // Simulation states
   const [isLoading, setIsLoading] = useState(false);
@@ -104,6 +111,7 @@ export default function App() {
     const cachedExpenses = getExpenses();
     const cachedContractors = getContractors();
     const cachedContractorPayments = getContractorPayments();
+    const cachedUsers = getUsers();
 
     setWorkers(cachedWorkers);
     setAttendance(cachedAttendance);
@@ -111,19 +119,23 @@ export default function App() {
     setExpenses(cachedExpenses);
     setContractors(cachedContractors);
     setContractorPayments(cachedContractorPayments);
+    setUsers(cachedUsers);
 
     // 2. Sync with Firebase in the background
     const syncWithFirebase = async () => {
       // First, seed Firestore if completely empty
       await seedFirestoreIfEmpty(
-        SEED_WORKERS, 
-        SEED_ATTENDANCE, 
-        SEED_TRANSACTIONS, 
+        SEED_WORKERS,
+        SEED_ATTENDANCE,
+        SEED_TRANSACTIONS,
         SEED_EXPENSES,
         SEED_CONTRACTORS,
         SEED_CONTRACTOR_PAYMENTS
       );
-      
+
+      // Users are seeded separately so existing (already-seeded) databases still get a default login
+      await seedUsersIfEmpty(SEED_USERS);
+
       // Fetch fresh data from Firestore
       const result = await fetchFromFirestore();
       if (result.success) {
@@ -133,6 +145,7 @@ export default function App() {
         setExpenses(result.expenses);
         setContractors(result.contractors || []);
         setContractorPayments(result.contractorPayments || []);
+        setUsers(result.users && result.users.length > 0 ? result.users : cachedUsers);
 
         // Also update local storage cache
         saveWorkers(result.workers);
@@ -141,6 +154,9 @@ export default function App() {
         saveExpenses(result.expenses);
         saveContractors(result.contractors || []);
         saveContractorPayments(result.contractorPayments || []);
+        if (result.users && result.users.length > 0) {
+          saveUsers(result.users);
+        }
       }
     };
 
@@ -389,6 +405,40 @@ export default function App() {
     });
   };
 
+  // LOGIN USER ACTIONS
+  const handleAddUser = (newUser: Omit<AppUser, 'id'>) => {
+    triggerLoading('Adding login user...', () => {
+      const id = `user-${Date.now()}`;
+      const createdUser = { ...newUser, id };
+      const updatedUsers = [...users, createdUser];
+      setUsers(updatedUsers);
+      saveUsers(updatedUsers);
+      saveUserToFirestore(createdUser);
+    });
+  };
+
+  const handleEditUser = (id: string, updatedFields: Partial<AppUser>) => {
+    triggerLoading('Updating login user...', () => {
+      const target = users.find(u => u.id === id);
+      if (target) {
+        const updatedUser = { ...target, ...updatedFields };
+        const updatedUsers = users.map(u => u.id === id ? updatedUser : u);
+        setUsers(updatedUsers);
+        saveUsers(updatedUsers);
+        saveUserToFirestore(updatedUser);
+      }
+    });
+  };
+
+  const handleDeleteUser = (id: string) => {
+    triggerLoading('Removing login user...', () => {
+      const updated = users.filter(u => u.id !== id);
+      setUsers(updated);
+      saveUsers(updated);
+      deleteUserFromFirestore(id);
+    });
+  };
+
   // Shortcut from Dashboard to Expense Settlement
   const handleNavigateToExpenseSettlement = (workerId: string) => {
     triggerLoading('Opening settlement records...', () => {
@@ -518,12 +568,16 @@ export default function App() {
             workers={workers}
             transactions={transactions}
             expenses={expenses}
+            users={users}
             onEditWorker={handleEditWorker}
             onDeleteWorker={handleDeleteWorker}
             onEditTransaction={handleEditTransaction}
             onDeleteTransaction={handleDeleteTransaction}
             onEditExpense={handleEditExpense}
             onDeleteExpense={handleDeleteExpense}
+            onAddUser={handleAddUser}
+            onEditUser={handleEditUser}
+            onDeleteUser={handleDeleteUser}
             onLogout={() => {
               localStorage.removeItem('prefab_is_logged_in');
               setIsLoggedIn(false);
@@ -537,7 +591,7 @@ export default function App() {
 
   // 1. GATEWAY: If not logged in, render the login card layout exclusively
   if (!isLoggedIn) {
-    return <LoginScreen onLoginSuccess={() => setIsLoggedIn(true)} />;
+    return <LoginScreen users={users} onLoginSuccess={() => setIsLoggedIn(true)} />;
   }
 
   return (

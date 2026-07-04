@@ -1,6 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { getFirestore, collection, getDocs, doc, setDoc, writeBatch, deleteDoc } from 'firebase/firestore';
-import { Worker, Attendance, Transaction, Expense, Contractor, ContractorPayment } from '../types';
+import { Worker, Attendance, Transaction, Expense, Contractor, ContractorPayment, AppUser } from '../types';
 
 // Web App Firebase configuration
 const firebaseConfig = {
@@ -25,6 +25,7 @@ const TRANSACTIONS_COL = 'transactions';
 const EXPENSES_COL = 'expenses';
 const CONTRACTORS_COL = 'contractors';
 const CONTRACTOR_PAYMENTS_COL = 'contractor_payments';
+const USERS_COL = 'users';
 
 // Error Handling Requirements from the firebase-integration skill
 export enum OperationType {
@@ -141,6 +142,34 @@ export async function seedFirestoreIfEmpty(
   }
 }
 
+// Seed the users collection separately (runs even on an already-seeded database,
+// so existing deployments gain a default login without duplicating other data)
+export async function seedUsersIfEmpty(seedUsers: AppUser[]) {
+  try {
+    let usersSnapshot;
+    try {
+      usersSnapshot = await getDocs(collection(db, USERS_COL));
+    } catch (err) {
+      handleFirestoreError(err, OperationType.GET, USERS_COL);
+    }
+
+    if (usersSnapshot.empty) {
+      const batch = writeBatch(db);
+      seedUsers.forEach(u => {
+        const dRef = doc(db, USERS_COL, u.id);
+        batch.set(dRef, u);
+      });
+      try {
+        await batch.commit();
+      } catch (err) {
+        handleFirestoreError(err, OperationType.WRITE, 'batch-seed-users');
+      }
+    }
+  } catch (err) {
+    console.error('Error seeding users:', err);
+  }
+}
+
 // Fetch all from Firestore
 export async function fetchFromFirestore() {
   try {
@@ -186,6 +215,13 @@ export async function fetchFromFirestore() {
       handleFirestoreError(error, OperationType.GET, CONTRACTOR_PAYMENTS_COL);
     }
 
+    let usersSnap;
+    try {
+      usersSnap = await getDocs(collection(db, USERS_COL));
+    } catch (error) {
+      handleFirestoreError(error, OperationType.GET, USERS_COL);
+    }
+
     const workers: Worker[] = [];
     workersSnap.forEach(doc => workers.push(doc.data() as Worker));
 
@@ -204,25 +240,30 @@ export async function fetchFromFirestore() {
     const contractorPayments: ContractorPayment[] = [];
     contractorPaymentsSnap.forEach(doc => contractorPayments.push(doc.data() as ContractorPayment));
 
-    return { 
-      workers, 
-      attendance, 
-      transactions, 
-      expenses, 
-      contractors, 
-      contractorPayments, 
-      success: true 
+    const users: AppUser[] = [];
+    usersSnap.forEach(doc => users.push(doc.data() as AppUser));
+
+    return {
+      workers,
+      attendance,
+      transactions,
+      expenses,
+      contractors,
+      contractorPayments,
+      users,
+      success: true
     };
   } catch (error) {
     console.error('Error fetching from Firestore:', error);
-    return { 
-      workers: [], 
-      attendance: [], 
-      transactions: [], 
-      expenses: [], 
-      contractors: [], 
-      contractorPayments: [], 
-      success: false 
+    return {
+      workers: [],
+      attendance: [],
+      transactions: [],
+      expenses: [],
+      contractors: [],
+      contractorPayments: [],
+      users: [],
+      success: false
     };
   }
 }
@@ -313,5 +354,21 @@ export async function deleteContractorPaymentFromFirestore(paymentId: string) {
     await deleteDoc(doc(db, CONTRACTOR_PAYMENTS_COL, paymentId));
   } catch (error) {
     handleFirestoreError(error, OperationType.DELETE, `${CONTRACTOR_PAYMENTS_COL}/${paymentId}`);
+  }
+}
+
+export async function saveUserToFirestore(user: AppUser) {
+  try {
+    await setDoc(doc(db, USERS_COL, user.id), user);
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, `${USERS_COL}/${user.id}`);
+  }
+}
+
+export async function deleteUserFromFirestore(userId: string) {
+  try {
+    await deleteDoc(doc(db, USERS_COL, userId));
+  } catch (error) {
+    handleFirestoreError(error, OperationType.DELETE, `${USERS_COL}/${userId}`);
   }
 }
