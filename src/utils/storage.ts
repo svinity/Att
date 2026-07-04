@@ -138,7 +138,7 @@ export const SEED_ATTENDANCE: Attendance[] = [
   { id: 'att-9', workerId: 'worker-1', date: '2023-10-10', status: 'PRESENT' },
   { id: 'att-10', workerId: 'worker-2', date: '2023-10-10', status: 'HALF_DAY' },
   { id: 'att-11', workerId: 'worker-3', date: '2023-10-10', status: 'PRESENT' },
-  
+
   // 09 Oct 2023
   { id: 'att-12', workerId: 'worker-1', date: '2023-10-09', status: 'ABSENT' },
   { id: 'att-13', workerId: 'worker-2', date: '2023-10-09', status: 'PRESENT' },
@@ -257,7 +257,7 @@ export const saveUsers = (users: AppUser[]): void => saveToStorage<AppUser>(STOR
 export const getWorkerExpenseBalance = (workerId: string): number => {
   const txs = getTransactions().filter(t => t.workerId === workerId && t.type === 'Site Expense');
   const exps = getExpenses();
-  
+
   let totalGiven = 0;
   let totalSpent = 0;
 

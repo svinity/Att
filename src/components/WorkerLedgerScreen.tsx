@@ -133,7 +133,10 @@ export default function WorkerLedgerScreen({
     if (!selectedWorker) return { wagesEarned: 0, advancesTaken: 0, netBalance: 0 };
 
     let wagesEarned = 0;
-    const workerAttendance = attendance.filter(a => a.workerId === chosenWorkerId);
+    let workerAttendance = attendance.filter(a => a.workerId === chosenWorkerId);
+    if (filterMonth) {
+      workerAttendance = workerAttendance.filter(a => a.date.startsWith(filterMonth));
+    }
     workerAttendance.forEach(a => {
       const daysInMonth = getDaysInMonth(a.date);
       const calculatedDailyWage = selectedWorker.monthlySalary / daysInMonth;
@@ -146,7 +149,10 @@ export default function WorkerLedgerScreen({
     });
 
     let advancesTaken = 0;
-    const workerTxs = transactions.filter(t => t.workerId === chosenWorkerId);
+    let workerTxs = transactions.filter(t => t.workerId === chosenWorkerId);
+    if (filterMonth) {
+      workerTxs = workerTxs.filter(t => t.date.startsWith(filterMonth));
+    }
     workerTxs.forEach(t => {
       if (t.type === 'Salary Advance' || t.type === 'Other') {
         advancesTaken += t.amount;
@@ -164,7 +170,10 @@ export default function WorkerLedgerScreen({
     if (!selectedWorker) return { cashIssued: 0, billsReported: 0, cashHeld: 0 };
 
     let cashIssued = 0;
-    const workerTxs = transactions.filter(t => t.workerId === chosenWorkerId);
+    let workerTxs = transactions.filter(t => t.workerId === chosenWorkerId);
+    if (filterMonth) {
+      workerTxs = workerTxs.filter(t => t.date.startsWith(filterMonth));
+    }
     const siteTxs = workerTxs.filter(t => t.type === 'Site Expense');
     siteTxs.forEach(t => {
       cashIssued += t.amount;
@@ -172,7 +181,10 @@ export default function WorkerLedgerScreen({
 
     let billsReported = 0;
     const siteTxIds = siteTxs.map(t => t.id);
-    const workerExpenses = expenses.filter(e => siteTxIds.includes(e.transactionId));
+    let workerExpenses = expenses.filter(e => siteTxIds.includes(e.transactionId));
+    if (filterMonth) {
+      workerExpenses = workerExpenses.filter(e => e.date.startsWith(filterMonth));
+    }
     workerExpenses.forEach(e => {
       billsReported += e.amount;
     });
