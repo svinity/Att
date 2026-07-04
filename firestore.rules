@@ -52,5 +52,12 @@ service cloud.firestore {
       allow list: if true;
       allow create, update, delete: if isValidId(paymentId);
     }
+
+    // 7. Users Collection
+    match /users/{userId} {
+      allow get: if isValidId(userId);
+      allow list: if true;
+      allow create, update, delete: if isValidId(userId);
+    }
   }
 }
