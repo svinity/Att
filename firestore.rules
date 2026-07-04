@@ -13,37 +13,44 @@ service cloud.firestore {
 
     // 1. Workers Collection
     match /workers/{workerId} {
-      allow read, write: if isValidId(workerId);
+      allow get: if isValidId(workerId);
+      allow list: if true;
+      allow create, update, delete: if isValidId(workerId);
     }
 
     // 2. Attendance Collection
     match /attendance/{attendanceId} {
-      allow read, write: if isValidId(attendanceId);
+      allow get: if isValidId(attendanceId);
+      allow list: if true;
+      allow create, update, delete: if isValidId(attendanceId);
     }
 
     // 3. Transactions Collection
     match /transactions/{transactionId} {
-      allow read, write: if isValidId(transactionId);
+      allow get: if isValidId(transactionId);
+      allow list: if true;
+      allow create, update, delete: if isValidId(transactionId);
     }
 
     // 4. Expenses Collection
     match /expenses/{expenseId} {
-      allow read, write: if isValidId(expenseId);
+      allow get: if isValidId(expenseId);
+      allow list: if true;
+      allow create, update, delete: if isValidId(expenseId);
     }
 
     // 5. Contractors Collection
     match /contractors/{contractorId} {
-      allow read, write: if isValidId(contractorId);
+      allow get: if isValidId(contractorId);
+      allow list: if true;
+      allow create, update, delete: if isValidId(contractorId);
     }
 
     // 6. Contractor Payments Collection
     match /contractor_payments/{paymentId} {
-      allow read, write: if isValidId(paymentId);
-    }
-
-    // 7. Users Collection (login accounts)
-    match /users/{userId} {
-      allow read, write: if isValidId(userId);
+      allow get: if isValidId(paymentId);
+      allow list: if true;
+      allow create, update, delete: if isValidId(paymentId);
     }
   }
 }
