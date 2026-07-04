@@ -23,6 +23,14 @@ interface LedgerItem {
   amountColorClass: string;
 }
 
+const getDaysInMonth = (dateStr: string): number => {
+  const parts = dateStr.split('-');
+  if (parts.length < 2) return 30; // fallback
+  const year = parseInt(parts[0], 10);
+  const month = parseInt(parts[1], 10);
+  return new Date(year, month, 0).getDate();
+};
+
 export default function WorkerLedgerScreen({
   workers,
   attendance,
@@ -53,12 +61,15 @@ export default function WorkerLedgerScreen({
       let title = 'Absent';
       let amountColorClass = 'text-gray-400';
 
+      const daysInMonth = getDaysInMonth(a.date);
+      const calculatedDailyWage = Math.round(selectedWorker.monthlySalary / daysInMonth);
+
       if (a.status === 'PRESENT') {
-        amountText = `+ Rs. ${selectedWorker.dailyWage}`;
+        amountText = `+ Rs. ${calculatedDailyWage}`;
         title = 'Present';
         amountColorClass = 'text-[#047857] font-extrabold';
       } else if (a.status === 'HALF_DAY') {
-        amountText = `+ Rs. ${selectedWorker.dailyWage * 0.5}`;
+        amountText = `+ Rs. ${Math.round(calculatedDailyWage * 0.5)}`;
         title = 'Half Day';
         amountColorClass = 'text-amber-600 font-extrabold';
       } else if (a.status === 'ABSENT') {
@@ -124,10 +135,13 @@ export default function WorkerLedgerScreen({
     let wagesEarned = 0;
     const workerAttendance = attendance.filter(a => a.workerId === chosenWorkerId);
     workerAttendance.forEach(a => {
+      const daysInMonth = getDaysInMonth(a.date);
+      const calculatedDailyWage = selectedWorker.monthlySalary / daysInMonth;
+
       if (a.status === 'PRESENT') {
-        wagesEarned += selectedWorker.dailyWage;
+        wagesEarned += calculatedDailyWage;
       } else if (a.status === 'HALF_DAY') {
-        wagesEarned += selectedWorker.dailyWage * 0.5;
+        wagesEarned += calculatedDailyWage * 0.5;
       }
     });
 
@@ -140,9 +154,9 @@ export default function WorkerLedgerScreen({
     });
 
     return {
-      wagesEarned,
+      wagesEarned: Math.round(wagesEarned),
       advancesTaken,
-      netBalance: wagesEarned - advancesTaken,
+      netBalance: Math.round(wagesEarned) - advancesTaken,
     };
   };
 

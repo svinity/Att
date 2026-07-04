@@ -259,8 +259,8 @@ export const getWorkerExpenseBalance = (workerId: string): number => {
 };
 
 // Calculate complete worker ledger balance
-// Sum of wages earned (Present = Daily Wage, Half Day = Daily Wage * 0.5)
-// MINUS sum of all Money Given transactions (which reduce what company owes or increases advance)
+// Sum of wages earned (Present = Monthly Salary / Days in Month, Half Day = (Monthly Salary / Days in Month) * 0.5)
+// MINUS sum of personal advances (excluding site expenses)
 export const getWorkerLedgerBalance = (workerId: string): number => {
   const worker = getWorkers().find(w => w.id === workerId);
   if (!worker) return 0;
@@ -270,19 +270,29 @@ export const getWorkerLedgerBalance = (workerId: string): number => {
 
   let earnings = 0;
   attendance.forEach(a => {
+    const parts = a.date.split('-');
+    let daysInMonth = 30;
+    if (parts.length >= 2) {
+      const year = parseInt(parts[0], 10);
+      const month = parseInt(parts[1], 10);
+      daysInMonth = new Date(year, month, 0).getDate();
+    }
+    const calculatedDailyWage = worker.monthlySalary / daysInMonth;
+
     if (a.status === 'PRESENT') {
-      earnings += worker.dailyWage;
+      earnings += calculatedDailyWage;
     } else if (a.status === 'HALF_DAY') {
-      earnings += worker.dailyWage * 0.5;
+      earnings += calculatedDailyWage * 0.5;
     }
   });
 
   let moneyReceived = 0;
   transactions.forEach(t => {
-    moneyReceived += t.amount;
+    if (t.type === 'Salary Advance' || t.type === 'Other') {
+      moneyReceived += t.amount;
+    }
   });
 
   // Balance = Earnings - MoneyReceived
-  // e.g. if worker earned Rs. 2,000 and received Rs. 5,000, balance is -3000 (worker holds company's money)
-  return earnings - moneyReceived;
+  return Math.round(earnings) - moneyReceived;
 };

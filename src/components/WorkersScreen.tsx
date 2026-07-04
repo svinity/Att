@@ -27,6 +27,17 @@ export default function WorkersScreen({ workers, onAddWorker, onEditWorker }: Wo
   const [formStatus, setFormStatus] = useState<'Active' | 'Inactive'>('Active');
   const [formRemarks, setFormRemarks] = useState('');
 
+  // Auto-link Monthly Salary & Daily Wage inputs
+  const handleMonthlySalaryChange = (val: number) => {
+    setFormMonthlySalary(val);
+    setFormDailyWage(Math.round(val / 30));
+  };
+
+  const handleDailyWageChange = (val: number) => {
+    setFormDailyWage(val);
+    setFormMonthlySalary(val * 30);
+  };
+
   // Open modal for adding
   const handleOpenAdd = () => {
     setEditingWorker(null);
@@ -311,7 +322,7 @@ export default function WorkersScreen({ workers, onAddWorker, onEditWorker }: Wo
                       required
                       min={0}
                       value={formMonthlySalary}
-                      onChange={(e) => setFormMonthlySalary(Number(e.target.value))}
+                      onChange={(e) => handleMonthlySalaryChange(Number(e.target.value))}
                       className="w-full h-12 pl-10 pr-4 rounded-lg border border-gray-200 text-sm font-medium focus:outline-none focus:border-[#1a56db]"
                     />
                     <span className="absolute left-3.5 top-3.5 text-xs font-bold text-gray-400">Rs.</span>
@@ -326,7 +337,7 @@ export default function WorkersScreen({ workers, onAddWorker, onEditWorker }: Wo
                       required
                       min={0}
                       value={formDailyWage}
-                      onChange={(e) => setFormDailyWage(Number(e.target.value))}
+                      onChange={(e) => handleDailyWageChange(Number(e.target.value))}
                       className="w-full h-12 pl-10 pr-4 rounded-lg border border-gray-200 text-sm font-medium focus:outline-none focus:border-[#1a56db]"
                     />
                     <span className="absolute left-3.5 top-3.5 text-xs font-bold text-gray-400">Rs.</span>
