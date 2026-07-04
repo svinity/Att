@@ -188,6 +188,15 @@ export default function AttendanceScreen({
             <div className="space-y-3">
               {activeWorkers.map(worker => {
                 const currentStatus = getStatus(worker.id);
+                const parts = currentDate.split('-');
+                let daysInMonth = 30;
+                if (parts.length >= 2) {
+                  const year = parseInt(parts[0], 10);
+                  const month = parseInt(parts[1], 10);
+                  daysInMonth = new Date(year, month, 0).getDate();
+                }
+                const calculatedDailyWage = Math.round(worker.monthlySalary / daysInMonth);
+
                 return (
                   <div
                     key={worker.id}
@@ -198,7 +207,7 @@ export default function AttendanceScreen({
                       <div>
                         <h4 className="text-base font-extrabold text-gray-900">{worker.name}</h4>
                         <p className="text-xs text-gray-400">
-                          {worker.designation} • Rs. {worker.dailyWage}/day
+                          {worker.designation} • Rs. {calculatedDailyWage}/day (calculated for this month)
                         </p>
                       </div>
                       

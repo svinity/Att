@@ -291,12 +291,12 @@ export const getWorkerLedgerBalance = (workerId: string): number => {
       const month = parseInt(parts[1], 10);
       daysInMonth = new Date(year, month, 0).getDate();
     }
-    const calculatedDailyWage = worker.monthlySalary / daysInMonth;
+    const calculatedDailyWage = Math.round(worker.monthlySalary / daysInMonth);
 
     if (a.status === 'PRESENT') {
       earnings += calculatedDailyWage;
     } else if (a.status === 'HALF_DAY') {
-      earnings += calculatedDailyWage * 0.5;
+      earnings += Math.round(calculatedDailyWage * 0.5);
     }
   });
 

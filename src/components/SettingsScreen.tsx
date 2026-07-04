@@ -99,7 +99,7 @@ export default function SettingsScreen({
       mobile: wMobile.trim(),
       designation: wDesignation.trim(),
       monthlySalary: Number(wSalary),
-      dailyWage: Number(wWage),
+      dailyWage: Math.round(Number(wSalary) / 30),
       status: wStatus,
       remarks: wRemarks.trim(),
     });
@@ -317,7 +317,7 @@ export default function SettingsScreen({
               <div>
                 <h4 className="font-extrabold text-xs text-gray-900">{w.name}</h4>
                 <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mt-0.5">
-                  {w.designation} • Wage: ₹{w.dailyWage}/day
+                  {w.designation} • Base: ₹{w.monthlySalary}/mo (Avg ₹{Math.round(w.monthlySalary / 30)}/day)
                 </p>
               </div>
               
@@ -514,7 +514,7 @@ export default function SettingsScreen({
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Monthly Salary (₹)</label>
                   <input
@@ -526,13 +526,12 @@ export default function SettingsScreen({
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Daily Wage (₹)</label>
+                  <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Daily Rate (30-day Avg)</label>
                   <input
                     type="number"
-                    value={wWage}
-                    onChange={(e) => setWWage(Number(e.target.value))}
-                    required
-                    className="w-full h-11 px-3 bg-gray-50/50 rounded-xl border border-gray-200 text-xs font-semibold focus:outline-none focus:border-[#1a56db]"
+                    disabled
+                    value={Math.round(wSalary / 30)}
+                    className="w-full h-11 px-3 bg-gray-100 rounded-xl border border-gray-200 text-xs font-semibold text-gray-500 cursor-not-allowed focus:outline-none"
                   />
                 </div>
               </div>

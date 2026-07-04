@@ -86,7 +86,7 @@ export default function WorkersScreen({ workers, onAddWorker, onEditWorker }: Wo
       designation: formDesignation.trim(),
       joiningDate: formJoiningDate,
       monthlySalary: Number(formMonthlySalary),
-      dailyWage: Number(formDailyWage),
+      dailyWage: Math.round(Number(formMonthlySalary) / 30),
       status: formStatus,
       remarks: formRemarks.trim(),
     };
@@ -193,9 +193,9 @@ export default function WorkersScreen({ workers, onAddWorker, onEditWorker }: Wo
               <div className="pt-3 border-t border-gray-100 flex items-center justify-between">
                 <div>
                   <span className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider">
-                    Daily Wage
+                    Avg Daily Rate
                   </span>
-                  <span className="text-xs font-bold text-gray-700">Rs. {worker.dailyWage}/day</span>
+                  <span className="text-xs font-bold text-gray-700">Rs. {Math.round(worker.monthlySalary / 30)}/day</span>
                 </div>
                 
                 <div className="text-right">
@@ -330,15 +330,13 @@ export default function WorkersScreen({ workers, onAddWorker, onEditWorker }: Wo
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Daily Wage</label>
-                  <div className="relative">
+                  <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Daily Rate (30-day Avg)</label>
+                  <div className="relative bg-gray-50 rounded-lg">
                     <input
                       type="number"
-                      required
-                      min={0}
-                      value={formDailyWage}
-                      onChange={(e) => handleDailyWageChange(Number(e.target.value))}
-                      className="w-full h-12 pl-10 pr-4 rounded-lg border border-gray-200 text-sm font-medium focus:outline-none focus:border-[#1a56db]"
+                      disabled
+                      value={Math.round(formMonthlySalary / 30)}
+                      className="w-full h-12 pl-10 pr-4 rounded-lg border border-gray-200 text-sm font-medium focus:outline-none bg-gray-50 text-gray-500 cursor-not-allowed"
                     />
                     <span className="absolute left-3.5 top-3.5 text-xs font-bold text-gray-400">Rs.</span>
                   </div>

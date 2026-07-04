@@ -78,12 +78,17 @@ export default function WorkerLedgerScreen({
         amountColorClass = 'text-[#dc2626]';
       }
 
+      const monthLabel = new Date(a.date).toLocaleDateString('en-IN', { month: 'long' });
+      const subtitle = a.status === 'ABSENT'
+        ? `Absent (Rate: Rs. ${calculatedDailyWage}/day, based on ${daysInMonth} days of ${monthLabel})`
+        : `Daily rate: Rs. ${calculatedDailyWage} (based on ${daysInMonth} days of ${monthLabel})`;
+
       items.push({
         id: `att-item-${a.id}`,
         date: a.date,
         type: a.status,
         title,
-        subtitle: 'Attendance logged',
+        subtitle,
         amountText,
         amountColorClass,
       });
@@ -139,12 +144,12 @@ export default function WorkerLedgerScreen({
     }
     workerAttendance.forEach(a => {
       const daysInMonth = getDaysInMonth(a.date);
-      const calculatedDailyWage = selectedWorker.monthlySalary / daysInMonth;
+      const calculatedDailyWage = Math.round(selectedWorker.monthlySalary / daysInMonth);
 
       if (a.status === 'PRESENT') {
         wagesEarned += calculatedDailyWage;
       } else if (a.status === 'HALF_DAY') {
-        wagesEarned += calculatedDailyWage * 0.5;
+        wagesEarned += Math.round(calculatedDailyWage * 0.5);
       }
     });
 
@@ -198,6 +203,11 @@ export default function WorkerLedgerScreen({
 
   const { wagesEarned, advancesTaken, netBalance } = getPayrollBreakdown();
   const { cashIssued, billsReported, cashHeld } = getSiteExpensesBreakdown();
+
+  const activeMonthDate = filterMonth ? `${filterMonth}-01` : (attendance.length > 0 ? attendance[0].date : new Date().toISOString().split('T')[0]);
+  const currentMonthDays = getDaysInMonth(activeMonthDate);
+  const currentCalculatedDailyWage = Math.round(selectedWorker ? selectedWorker.monthlySalary / currentMonthDays : 0);
+  const monthLabel = new Date(activeMonthDate).toLocaleDateString('en-IN', { month: 'short' });
 
   const ledgerItems = getLedgerItems();
 
@@ -272,8 +282,8 @@ export default function WorkerLedgerScreen({
                     <span className="font-extrabold text-gray-800">Rs. {selectedWorker.monthlySalary}</span>
                   </div>
                   <div>
-                    <span className="text-gray-400 font-medium block">Daily Wage Rate</span>
-                    <span className="font-extrabold text-gray-800">Rs. {selectedWorker.dailyWage} / day</span>
+                    <span className="text-gray-400 font-medium block">Daily Wage Rate ({monthLabel})</span>
+                    <span className="font-extrabold text-gray-800">Rs. {currentCalculatedDailyWage} / day</span>
                   </div>
                 </div>
 
